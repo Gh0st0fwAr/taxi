@@ -45,6 +45,7 @@ import {
   DRIVER_STORAGE,
   PICKUP,
   clickPrimaryAction,
+  confirmActionResult,
   expectUiDriverState,
   isBoardingFormVisible,
   openOrderCard,
@@ -264,6 +265,7 @@ test('А.1.1 — стандартный вызов: от создания зак
   await expect(take, 'в карточке заказа есть кнопка принятия').toBeVisible({ timeout: 60_000 })
   await expect(take).toBeEnabled({ timeout: 60_000 })
   await take.click()
+  await confirmActionResult(driverPage, 'success', 'приложение подтвердило принятие стандартного заказа')
 
   // ПРОВЕРКА 2 (вторая опора) — после «Взять заказ» водитель становится
   // ИСПОЛНИТЕЛЕМ, и никто его не выбирал. У голосования и предложения он остался
