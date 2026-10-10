@@ -10,13 +10,10 @@ if (!allowedModes.has(mode)) {
   process.exit(2);
 }
 
-const nodeOptions = (process.env.NODE_OPTIONS || '')
-  .split(/\s+/)
-  .filter(Boolean);
-
-if (!nodeOptions.includes('--openssl-legacy-provider')) {
-  nodeOptions.push('--openssl-legacy-provider');
-}
+const existingNodeOptions = process.env.NODE_OPTIONS || '';
+const nodeOptions = existingNodeOptions.includes('--openssl-legacy-provider')
+  ? existingNodeOptions
+  : [existingNodeOptions, '--openssl-legacy-provider'].filter(Boolean).join(' ');
 
 const env = {
   ...process.env,
