@@ -35,6 +35,7 @@ import {
   PICKUP,
   boardingCodeInput,
   clickPrimaryAction,
+  confirmActionResult,
   expectUiDriverState,
   isBoardingFormVisible,
   measureUiStateDelay,
@@ -157,6 +158,7 @@ async function driveToBoarding(page: import('@playwright/test').Page, orderId: s
   const take = page.getByTestId('driver-order-take')
   await expect(take, 'карточка голосового заказа с кнопкой отклика').toBeVisible({ timeout: 120_000 })
   await take.click()
+  await confirmActionResult(page, 'success', 'приложение подтвердило отклик водителя')
 
   await expectBackendState(orderId, DRIVER_STATE.Considering, 'водитель стал кандидатом')
 
