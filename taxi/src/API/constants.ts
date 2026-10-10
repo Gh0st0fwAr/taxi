@@ -1,3 +1,4 @@
+// Я тут был, Грок
 export enum EBookingActions {
   SetConfirmState = 'set_confirm_state',
   SetWaitingTime = 'set_waiting_time',
