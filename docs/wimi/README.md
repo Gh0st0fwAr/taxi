@@ -21,7 +21,22 @@ contract is production-ready.
 
 ## Verification status
 
-The changes are proposed in [PR #2](https://github.com/Gh0st0fwAr/taxi/pull/2)
-from branch `feat/wimi-001-003-foundation`. A local dependency-installed build
-and the full test suites have not been run in this environment. Do not treat
-this branch as production-ready until CI and the acceptance checks in WIMI-002 pass.
+GitHub Actions validation on source commit `157c359` passed:
+- `npm ci` on Node.js 24;
+- `npm run build:taxi`;
+- `npm run build:wimi`;
+- Jest: 51 suites and 397 tests passed.
+
+The build emitted existing Sass/CSS compatibility and Browserslist freshness
+warnings; they were retained in logs but not treated as compilation errors.
+The build artifacts were uploaded by
+[GitHub Actions run 38091354959](https://github.com/Gh0st0fwAr/taxi/actions/runs/38091354959).
+
+Playwright was attempted separately, but the run failed before business scenarios
+could execute because the repository has no configured `E2E_DRIVER_LOGIN`,
+`E2E_DRIVER_PASSWORD`, `E2E_PASSENGER_LOGIN` and related test-account secrets.
+Configure dedicated test accounts as described in [e2e/README.md](../../taxi/e2e/README.md)
+and rerun the E2E workflow before treating Playwright as passed.
+
+These checks validate the build foundation, not production readiness of the
+nanny UX or backend contract.
