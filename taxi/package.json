@@ -110,6 +110,8 @@
     "start:default": "set NODE_OPTIONS=--openssl-legacy-provider && node pre-build.js && node scripts/start.js",
     "start:nix": "node pre-build.js && NODE_OPTIONS=--openssl-legacy-provider node scripts/start.js",
     "build": "run-script-os",
+    "build:taxi": "node scripts/build-mode.js taxi",
+    "build:wimi": "node scripts/build-mode.js wimi",
     "build:default": "set NODE_OPTIONS=--openssl-legacy-provider && node pre-build.js && node scripts/build.js",
     "build:nix": "node pre-build.js && NODE_OPTIONS=--openssl-legacy-provider node scripts/build.js",
     "prepare-build": "node pre-build.js",
