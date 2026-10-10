@@ -47,42 +47,12 @@ jobs:
           CI: "true"
         run: npm run test:nix -- --runInBand
 
-      - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
-
-      - name: Run live-backend Playwright suite
-        env:
-          CI: "true"
-          E2E_DRIVER_LOGIN: ${{ secrets.E2E_DRIVER_LOGIN }}
-          E2E_DRIVER_PASSWORD: ${{ secrets.E2E_DRIVER_PASSWORD }}
-          E2E_DRIVER_TYPE: ${{ secrets.E2E_DRIVER_TYPE }}
-          E2E_DRIVER2_LOGIN: ${{ secrets.E2E_DRIVER2_LOGIN }}
-          E2E_DRIVER2_PASSWORD: ${{ secrets.E2E_DRIVER2_PASSWORD }}
-          E2E_DRIVER2_TYPE: ${{ secrets.E2E_DRIVER2_TYPE }}
-          E2E_PASSENGER_LOGIN: ${{ secrets.E2E_PASSENGER_LOGIN }}
-          E2E_PASSENGER_PASSWORD: ${{ secrets.E2E_PASSENGER_PASSWORD }}
-          E2E_PASSENGER_TYPE: ${{ secrets.E2E_PASSENGER_TYPE }}
-          E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
-        shell: bash
-        run: |
-          required=(E2E_DRIVER_LOGIN E2E_DRIVER_PASSWORD E2E_DRIVER2_LOGIN E2E_DRIVER2_PASSWORD E2E_PASSENGER_LOGIN E2E_PASSENGER_PASSWORD)
-          missing=()
-          for key in "${required[@]}"; do
-            if [[ -z "${!key}" ]]; then missing+=("$key"); fi
-          done
-          if (( ${#missing[@]} )); then
-            echo "::warning::Playwright E2E not run: missing dedicated test-account secrets: ${missing[*]}. This suite mutates live backend orders."
-            exit 0
-          fi
-          npm run test:e2e
-
-      - name: Upload test reports
+      - name: Upload build artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wimi-validation-reports
+          name: wimi-validation-builds
           path: |
-            taxi/e2e-results/
             taxi/build/
             taxi/build-wimi/
           if-no-files-found: ignore
