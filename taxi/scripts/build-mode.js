@@ -19,7 +19,7 @@ const env = {
   ...process.env,
   BUILD_MODE: mode,
   REACT_APP_BUILD_MODE: mode,
-  NODE_OPTIONS: nodeOptions.join(' '),
+  NODE_OPTIONS: nodeOptions,
 };
 
 function run(scriptPath) {
