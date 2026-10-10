@@ -1,9 +1,6 @@
 name: WIMI foundation validation
 
 on:
-  push:
-    branches:
-      - feat/wimi-001-003-foundation
   pull_request:
     branches:
       - main
