@@ -21,7 +21,7 @@ contract is production-ready.
 
 ## Verification status
 
-The GitHub API changes are being prepared on branch
-`feat/wimi-001-003-foundation`. A local dependency-installed build and the
-full test suites have not been run in this environment. Do not treat this
-branch as production-ready until CI and the acceptance checks in WIMI-002 pass.
+The changes are proposed in [PR #2](https://github.com/Gh0st0fwAr/taxi/pull/2)
+from branch `feat/wimi-001-003-foundation`. A local dependency-installed build
+and the full test suites have not been run in this environment. Do not treat
+this branch as production-ready until CI and the acceptance checks in WIMI-002 pass.
