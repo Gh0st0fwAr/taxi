@@ -33,9 +33,24 @@ Run from `taxi/` with Node 24 and dependencies installed:
    after the other build.
 4. Run `node scripts/build-mode.js invalid`; it exits non-zero and does not
    start a build.
-5. `npm run test:nix` and existing Playwright tests pass.
+5. Jest and the existing Playwright suite are checked separately.
 6. Confirm no Taxi route, API, auth or order lifecycle regression.
 
-**Verification status:** source changes are prepared on this branch, but a
-dependency-installed build and full tests have not yet been run. Do not mark
-the acceptance checks as passed until CI provides evidence.
+## Verification results
+
+On source commit `157c359`, GitHub Actions completed both production builds
+successfully:
+- Taxi: `npm run build:taxi`;
+- WIMI: `npm run build:wimi`.
+
+Jest passed: 51 suites, 397 tests. The workflow uploaded both build directories
+as an artifact. Existing Sass/CSS compatibility and Browserslist warnings remain
+visible in the build logs; CI does not promote these existing warnings to errors.
+
+Playwright has **not passed**: its workflow failed at authentication setup
+because dedicated test-account secrets were not configured. No business
+scenarios ran. Set up the required accounts/secrets from `taxi/e2e/README.md`
+and rerun E2E before marking the full acceptance suite green.
+
+The build/test result validates this code snapshot; it does not establish
+production readiness of the WIMI screens or backend integration.
