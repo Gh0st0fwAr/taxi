@@ -613,6 +613,12 @@ export function filterOrderDriversForBrowserEmulator(order: IOrder): IOrder {
 export function filterOrdersForBrowserEmulator(orders: IOrder[] | null | undefined, kind: 'active' | 'ready' | 'history' = 'active') {
   if (!orders) return orders ?? null
 
+  // Внешний эмулятор создаёт заказы напрямую на backend и не ведёт локальный список
+  // browser-emulator order IDs. В этом режиме нельзя применять фильтры песочницы:
+  // они скрывают реальные backend-заказы, созданные E2E или внешним симулятором.
+  if (isExternalEmulatorEnabled())
+    return orders.map(filterOrderDriversForBrowserEmulator)
+
   const clientEmulatorMode = isBrowserEmulatorRunning('clients') && (kind === 'ready' || kind === 'active')
   const driverEmulatorMode = isBrowserEmulatorRunning('drivers') && (kind === 'ready' || kind === 'active')
 
