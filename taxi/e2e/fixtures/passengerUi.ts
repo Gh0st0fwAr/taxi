@@ -415,9 +415,10 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const digits = phone.replace(/\D/g, '')
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
-  await input.click()
-  await input.press('Control+A')
-  await input.press('Backspace')
+  // fill('') очищает контролируемое поле через input/change events. Для
+  // маскированного поля Ctrl+A/Backspace ненадёжны: маска может сохранить цифры
+  // профиля, и последующий ввод добавится к ним вместо замены.
+  await input.fill('')
 
   // Маска (`+233(___)-___-___`) сама показывает код страны. Если набрать номер
   // целиком, часть цифр совпадёт с этим префиксом, и результат зависит от
