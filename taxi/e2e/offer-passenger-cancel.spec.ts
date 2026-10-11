@@ -241,7 +241,7 @@ test.afterAll(async() => {
     return
   try {
     reportSweep('после прогона', await cancelTestOrders(passenger))
-    console.log('E2E driver sweep (после прогона):', await cancelTestDriverAssignments(driver))
+    console.log('E2E driver sweep (после прогона):', await cancelTestDriverAssignments(driver.session))
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
