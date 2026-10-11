@@ -39,6 +39,7 @@ import {
   ISession,
   boardingCodeOf,
   cancelOrder,
+  cancelTestDriverAssignments,
   cancelTestOrders,
   createStandardOrder,
   createVotingOrder,
@@ -153,6 +154,7 @@ test.beforeAll(async({ browser }) => {
   boardingCode = boardingCodeOf(driver.car)
 
   await cancelTestOrders(passenger)
+  console.log('E2E driver sweep (перед прогоном):', await cancelTestDriverAssignments(driver.session))
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   passengerPage = await passengerContext.newPage()
@@ -206,6 +208,7 @@ test.afterAll(async() => {
     return
   try {
     const { cancelled, skipped } = await cancelTestOrders(passenger)
+    console.log('E2E driver sweep (после прогона):', await cancelTestDriverAssignments(driver.session))
     if (cancelled)
       console.log(`E2E sweep: отменено зависших тестовых заказов — ${cancelled}`)
     if (skipped.length)
