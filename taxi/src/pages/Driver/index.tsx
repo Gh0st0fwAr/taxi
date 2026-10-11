@@ -115,6 +115,7 @@ const Driver: React.FC<IProps> = ({
     strictTakeTimers.current = []
   }, [])
   const [emulatorOrdersEnabled, setEmulatorOrdersEnabled] = useState(() => isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
+  const previousEmulatorMode = useRef(isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
 
   // Выгода заказа зависит от расстояния до точки «Откуда», а такси едет — значит
   // и выгода должна пересчитываться. Селекторы считают её от GPS браузера,
@@ -129,9 +130,18 @@ const Driver: React.FC<IProps> = ({
 
     const syncEmulatorMode = (event?: Event) => {
       const enabled = isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled()
+      const previousEnabled = previousEmulatorMode.current
+      previousEmulatorMode.current = enabled
       setEmulatorOrdersEnabled(enabled)
-      clearOrders()
-      closeAllModals()
+
+      // The effect also runs after navigation when callback dependencies change.
+      // Only reset the UI for an actual emulator-state event/transition; otherwise
+      // a successful action modal can be closed immediately after navigating back.
+      if (event || previousEnabled !== enabled) {
+        clearOrders()
+        closeAllModals()
+      }
+
       const payload = {
         source: 'driver-page',
         screen: 'Driver',
