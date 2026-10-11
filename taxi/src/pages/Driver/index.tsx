@@ -183,6 +183,23 @@ const Driver: React.FC<IProps> = ({
       if (shownVotingTimeoutNotifications.current[order.b_id])
         return
 
+      // Do not let an unrelated expired voting order cover controls for an
+      // order the driver is already performing. Defer the warning until the
+      // active trip ends; otherwise the modal blocks "Поехал"/"Приехал".
+      const hasAnotherActiveTrip = activeOrders.some(activeOrder =>
+        activeOrder.b_id !== order.b_id &&
+        activeOrder.drivers?.some(driver =>
+          driver.u_id === user.u_id &&
+          [
+            EBookingDriverState.Performer,
+            EBookingDriverState.Arrived,
+            EBookingDriverState.Started,
+          ].includes(driver.c_state),
+        ),
+      )
+      if (hasAnotherActiveTrip)
+        return
+
       shownVotingTimeoutNotifications.current[order.b_id] = true
       addHiddenOrder(order.b_id, user.u_id)
       closeAllModals()
