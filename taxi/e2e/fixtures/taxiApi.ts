@@ -698,11 +698,15 @@ export async function cancelTestDriverAssignments(driver: ISession): Promise<ISw
         await cancelOrder(driver, orderId)
 
         const after = await readOrder(driver, orderId)
-        const state = driverStateOf(after, driver.userId)
+        const remainingAssignments = (after?.drivers ?? []).filter((item: any) =>
+          DRIVER_STATES_OCCUPYING_SEATS.has(Number(item?.c_state)),
+        )
         const terminalBooking = [3, 4].includes(Number(after.b_state))
-        if (!terminalBooking && state !== undefined && DRIVER_STATES_OCCUPYING_SEATS.has(state))
+        if (!terminalBooking && remainingAssignments.length > 0)
           throw new BackendError(
-            `назначение заказа ${orderId} всё ещё занимает места водителя (c_state=${state}, b_state=${after.b_state})`,
+            `заказ ${orderId} всё ещё занимает места: ` +
+            remainingAssignments.map((item: any) => `u${item.u_id}:state${item.c_state}`).join(',') +
+            ` (b_state=${after.b_state})`,
             after,
           )
 
