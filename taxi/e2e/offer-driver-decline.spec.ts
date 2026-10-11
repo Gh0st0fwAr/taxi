@@ -72,6 +72,7 @@ import {
   DRIVER_STATE,
   INTERCITY_LOCATION_CLASS,
   cancelOrder,
+  cancelTestDriverAssignments,
   cancelTestOrders,
   createOfferOrder,
   customerPriceOf,
@@ -214,6 +215,7 @@ test.beforeAll(async({ browser }) => {
   ).not.toBe(driver1.session.userId)
 
   reportSweep('перед прогоном', await cancelTestOrders(passenger))
+  console.log('E2E driver sweep (перед прогоном):', await cancelTestDriverAssignments(driver))
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   passengerPage = await passengerContext.newPage()
@@ -274,6 +276,7 @@ test.afterAll(async() => {
     return
   try {
     reportSweep('после прогона', await cancelTestOrders(passenger))
+    console.log('E2E driver sweep (после прогона):', await cancelTestDriverAssignments(driver))
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
