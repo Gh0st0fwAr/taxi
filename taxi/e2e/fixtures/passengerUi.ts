@@ -295,7 +295,7 @@ export const PASSENGER_ORDER_POINTS: Readonly<Record<'pickup' | 'destination' | 
   pickup: { query: 'улица Содружества 35 Ростов-на-Дону', match: 'Содружества' },
   destination: { query: 'Акмолинская улица 79 Ростов-на-Дону', match: 'Акмолинская' },
   // Таганрог, 52 км: единственный маршрут, на котором UI сам выставляет класс поездки «2».
-  intercityDestination: { query: 'Таганрог, Петровская улица 10', match: 'Bogudoniya' },
+  intercityDestination: { query: 'Таганрог, Петровская улица 10', match: 'Петровская' },
 }
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
