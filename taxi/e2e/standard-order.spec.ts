@@ -26,6 +26,7 @@ import { appUrl, driverAccount, passengerAccount } from './fixtures/accounts'
 import { stubMapTiles } from './fixtures/appShell'
 import {
   cancelOrder,
+  cancelTestDriverAssignments,
   cancelTestOrders,
   createStandardOrder,
   driverStateOf,
@@ -123,6 +124,7 @@ test.beforeAll(async({ browser }) => {
   // прогона, у пассажира не просто лишний: истёкшее ожидание голосового заказа
   // открывает модальное окно поверх страницы и сбрасывает выбранный заказ.
   reportSweep('перед прогоном', await cancelTestOrders(passenger))
+  console.log('E2E driver sweep (перед прогоном):', await cancelTestDriverAssignments(driver))
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   driverContext = await openSession(browser, DRIVER_STORAGE)
@@ -178,6 +180,7 @@ test.afterAll(async() => {
     return
   try {
     reportSweep('после прогона', await cancelTestOrders(passenger))
+    console.log('E2E driver sweep (после прогона):', await cancelTestDriverAssignments(driver))
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
