@@ -673,15 +673,28 @@ export async function cancelTestDriverAssignments(driver: ISession): Promise<ISw
 
     let cancelledInPass = 0
     for (const [orderId, order] of entries) {
-      const ownAssignment = (order?.drivers ?? []).some((item: any) =>
-        String(item?.u_id) === String(driver.userId) &&
+      const occupyingAssignments = (order?.drivers ?? []).filter((item: any) =>
         DRIVER_STATES_OCCUPYING_SEATS.has(Number(item?.c_state)),
       )
+      const markedAsTest = isTestOrder(order)
 
-      if (!isTestOrder(order) || !ownAssignment)
+      // Active-order API returns a bounded list, not all driver assignments.
+      // A stale test order may belong to an older E2E driver account, so do not
+      // require its driver id to match the currently configured test account.
+      // The safety boundary is the explicit test marker; never cancel unmarked
+      // orders. Log the page so a no-op sweep is diagnosable instead of looking
+      // like a successful cleanup.
+      if (markedAsTest && occupyingAssignments.length === 0)
+        console.log(`E2E driver cleanup: orderId=${orderId} marked=true occupyingAssignments=0`)
+
+      if (!markedAsTest || occupyingAssignments.length === 0)
         continue
 
       try {
+        console.log(
+          `E2E driver cleanup: trying orderId=${orderId} marked=true assignments=` +
+          occupyingAssignments.map((item: any) => `u${item.u_id}:state${item.c_state}`).join(','),
+        )
         await cancelOrder(driver, orderId)
 
         const after = await readOrder(driver, orderId)
@@ -705,9 +718,20 @@ export async function cancelTestDriverAssignments(driver: ISession): Promise<ISw
       }
     }
 
-    // Без успешной отмены список не сдвинется: endpoint не поддерживает offset.
-    if (!cancelledInPass)
+    // Если в первой странице нет тестовых назначений, повтор того же запроса
+    // не откроет следующие страницы: endpoint не поддерживает offset.
+    if (!cancelledInPass) {
+      const pageSummary = entries.map(([id, order]) => {
+        const assignments = (order?.drivers ?? []).map((item: any) =>
+          `u${item?.u_id}:state${item?.c_state}`).join(',')
+        return `${id}[test=${isTestOrder(order)},drivers=${assignments || 'none'}]`
+      })
+      console.warn(
+        `E2E driver cleanup: no cancellable test assignments for driverId=${driver.userId}; ` +
+        `API page=${pageSummary.join(';') || 'empty'}`,
+      )
       break
+    }
   }
 
   return { cancelled, skipped: [...skipped] }
