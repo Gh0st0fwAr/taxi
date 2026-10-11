@@ -210,7 +210,12 @@ export async function goOnline(
   // Сначала освобождаем водителя от незавершённых назначений прошлых E2E /
   // emulator-прогонов. Иначе старые Performer/Arrived/Started занимают места,
   // и UI скрывает новые тестовые заказы по capacity guard.
-  await cancelTestDriverAssignments(session)
+  const cleanup = await cancelTestDriverAssignments(session)
+  if (cleanup.skipped.length)
+    throw new BackendError(
+      `не удалось освободить тестовые назначения водителя ${session.userId}: ${cleanup.skipped.join(', ')}`,
+      cleanup,
+    )
 
   const drive = await post(`/car/${car.c_id}/drive`, authFields(session))
   // «car is already driven by this user» — нормальное состояние повторного запуска.
