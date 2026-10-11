@@ -183,6 +183,13 @@ const Driver: React.FC<IProps> = ({
       if (shownVotingTimeoutNotifications.current[order.b_id])
         return
 
+      // The external emulator can inherit expired voting participations from a
+      // previous run. Their modal blocks real UI clicks for the current scenario.
+      // Keep production behavior unchanged; suppress this stale warning only in
+      // the explicit driverEmulator/extEmulator mode.
+      if (emulatorOrdersEnabled)
+        return
+
       // Do not let an unrelated expired voting order cover controls for an
       // order the driver is already performing. Defer the warning until the
       // active trip ends; otherwise the modal blocks "Поехал"/"Приехал".
