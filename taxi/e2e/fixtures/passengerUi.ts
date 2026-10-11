@@ -412,24 +412,17 @@ export async function expandPassengerOrderForm(page: Page): Promise<void> {
  * форматирует ввод сама — сверяются только цифры.
  */
 export async function fillPassengerPhone(page: Page, phone: string): Promise<void> {
-  const digits = phone.replace(/\D/g, '')
+  const digits = phone.replace(/\\D/g, '')
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
-  // fill('') очищает контролируемое поле через input/change events. Для
-  // маскированного поля Ctrl+A/Backspace ненадёжны: маска может сохранить цифры
-  // профиля, и последующий ввод добавится к ним вместо замены.
-  await input.fill('')
 
-  // Маска (`+233(___)-___-___`) сама показывает код страны. Если набрать номер
-  // целиком, часть цифр совпадёт с этим префиксом, и результат зависит от
-  // положения каретки (замерено: `233335550001` вместо `233555000111`). Поэтому
-  // после очистки набирается только то, чего в маске ещё нет.
-  const shown = (await input.inputValue()).replace(/\D/g, '')
-  const rest = digits.startsWith(shown) ? digits.slice(shown.length) : digits
-  await input.pressSequentially(rest, { delay: 40 })
+  // Playwright fill sends the value through the input event instead of typing
+  // digits at a potentially stale caret position in the country-code mask.
+  // The mask is responsible for formatting the complete phone number.
+  await input.fill(digits)
 
   await expect
-    .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
+    .poll(async() => (await input.inputValue()).replace(/\\D/g, ''), {
       message: 'поле телефона содержит введённый номер',
       timeout: 15_000,
     })
