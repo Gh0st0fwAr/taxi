@@ -188,7 +188,7 @@ test.beforeAll(async({ browser }) => {
   driver = await prepareDriver(browser, driverAccount(), DRIVER_STORAGE, 'водитель')
 
   reportSweep('перед прогоном', await cancelTestOrders(passenger))
-  console.log('E2E driver sweep (перед прогоном):', await cancelTestDriverAssignments(driver))
+  console.log('E2E driver sweep (перед прогоном):', await cancelTestDriverAssignments(driver.session))
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   passengerPage = await passengerContext.newPage()
