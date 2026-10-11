@@ -617,7 +617,7 @@ export function filterOrdersForBrowserEmulator(orders: IOrder[] | null | undefin
   // browser-emulator order IDs. В этом режиме нельзя применять фильтры песочницы:
   // они скрывают реальные backend-заказы, созданные E2E или внешним симулятором.
   if (isExternalEmulatorEnabled())
-    return orders.map(filterOrderDriversForBrowserEmulator)
+    return orders
 
   const clientEmulatorMode = isBrowserEmulatorRunning('clients') && (kind === 'ready' || kind === 'active')
   const driverEmulatorMode = isBrowserEmulatorRunning('drivers') && (kind === 'ready' || kind === 'active')
