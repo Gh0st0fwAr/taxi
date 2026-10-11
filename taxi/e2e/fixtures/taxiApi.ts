@@ -560,7 +560,7 @@ export async function isOrderActiveFor(session: ISession, orderId: string): Prom
 const TEST_ORDER_MARKERS = [/\[E2E\b/i, /\[DRV:\s*\d+\]/i, /\[CASE\]/i]
 
 const orderMarkerText = (order: any): string =>
-  [order?.b_custom_comment, order?.b_comments].map(value => String(value ?? '')).join(' ')
+  [order?.b_custom_comment, order?.b_comments, order?.b_comment].map(value => String(value ?? '')).join(' ')
 
 /** Заказ создан тестовой оснасткой — этого проекта или его эмулятора. */
 export const isTestOrder = (order: any): boolean =>
