@@ -412,7 +412,7 @@ export async function expandPassengerOrderForm(page: Page): Promise<void> {
  * форматирует ввод сама — сверяются только цифры.
  */
 export async function fillPassengerPhone(page: Page, phone: string): Promise<void> {
-  const digits = phone.replace(/\\D/g, '')
+  const digits = phone.replace(/\D/g, '')
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
@@ -422,7 +422,7 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   await input.fill(digits)
 
   await expect
-    .poll(async() => (await input.inputValue()).replace(/\\D/g, ''), {
+    .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
       message: 'поле телефона содержит введённый номер',
       timeout: 15_000,
     })
