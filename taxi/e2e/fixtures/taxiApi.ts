@@ -207,6 +207,11 @@ export async function goOnline(
   car: ICar,
   position: { latitude: number; longitude: number },
 ): Promise<void> {
+  // Сначала освобождаем водителя от незавершённых назначений прошлых E2E /
+  // emulator-прогонов. Иначе старые Performer/Arrived/Started занимают места,
+  // и UI скрывает новые тестовые заказы по capacity guard.
+  await cancelTestDriverAssignments(session)
+
   const drive = await post(`/car/${car.c_id}/drive`, authFields(session))
   // «car is already driven by this user» — нормальное состояние повторного запуска.
   if (drive?.status === 'error' && !/already driven/i.test(String(drive?.message ?? '')))
@@ -635,3 +640,70 @@ export const cancelTestOrders = (
 ): Promise<ISweepResult> =>
   sweepActiveOrders(passenger, (orderId, order) =>
     orderId !== keepOrderId && isTestOrder(order))
+
+const DRIVER_STATES_OCCUPYING_SEATS = new Set([
+  DRIVER_STATE.Performer,
+  DRIVER_STATE.Arrived,
+  DRIVER_STATE.Started,
+])
+
+/**
+ * Убирает только тестовые назначения текущего водителя. В отличие от
+ * cancelTestOrders(passenger), этот проход читает активный список именно
+ * водителя: заказы могут быть назначены ему, но отсутствовать в списке
+ * пассажира, от имени которого выполняется обычная уборка.
+ *
+ * Непомеченные заказы не изменяются. После каждого прохода список перечитывается,
+ * поскольку backend возвращает активные заказы порциями. Если отмена не прошла,
+ * заказ остаётся в диагностике и не скрывается как успешно очищенный.
+ */
+export async function cancelTestDriverAssignments(driver: ISession): Promise<ISweepResult> {
+  let cancelled = 0
+  const skipped = new Set<string>()
+
+  for (let pass = 0; pass < ACTIVE_ORDERS_SWEEP_PASSES; pass += 1) {
+    const entries = Object.entries<any>(await listActiveOrders(driver))
+    if (!entries.length)
+      break
+
+    let cancelledInPass = 0
+    for (const [orderId, order] of entries) {
+      const ownAssignment = (order?.drivers ?? []).some((item: any) =>
+        String(item?.u_id) === String(driver.userId) &&
+        DRIVER_STATES_OCCUPYING_SEATS.has(Number(item?.c_state)),
+      )
+
+      if (!isTestOrder(order) || !ownAssignment)
+        continue
+
+      try {
+        await cancelOrder(driver, orderId)
+
+        const after = await readOrder(driver, orderId)
+        const state = driverStateOf(after, driver.userId)
+        const terminalBooking = [3, 4].includes(Number(after.b_state))
+        if (!terminalBooking && state !== undefined && DRIVER_STATES_OCCUPYING_SEATS.has(state))
+          throw new BackendError(
+            `назначение заказа ${orderId} всё ещё занимает места водителя (c_state=${state}, b_state=${after.b_state})`,
+            after,
+          )
+
+        cancelled += 1
+        cancelledInPass += 1
+        console.log(`E2E driver cleanup: driverId=${driver.userId} orderId=${orderId} released=true`)
+      } catch (error) {
+        skipped.add(orderId)
+        console.error(
+          `E2E DRIVER CLEANUP FAILED: driverId=${driver.userId} orderId=${orderId} — ` +
+          `${(error as Error)?.message ?? error}`,
+        )
+      }
+    }
+
+    // Без успешной отмены список не сдвинется: endpoint не поддерживает offset.
+    if (!cancelledInPass)
+      break
+  }
+
+  return { cancelled, skipped: [...skipped] }
+}
