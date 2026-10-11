@@ -17,6 +17,7 @@ import { expectAppBooted } from './fixtures/appShell'
 import {
   boardingCodeOf,
   cancelOrder,
+  cancelTestDriverAssignments,
   cancelTestOrders,
   choosePerformer,
   createVotingOrder,
@@ -69,6 +70,7 @@ test.beforeAll(async() => {
   car = await getDriverCar(driver)
   boardingCode = boardingCodeOf(car)
   await goOnline(driver, car, PICKUP)
+  console.log('E2E driver sweep (перед прогоном):', await cancelTestDriverAssignments(driver))
 })
 
 const reason = (error: unknown) => (error as Error)?.message ?? String(error)
@@ -109,6 +111,7 @@ test.afterAll(async() => {
     return
   try {
     const { cancelled, skipped } = await cancelTestOrders(passenger)
+    console.log('E2E driver sweep (после прогона):', await cancelTestDriverAssignments(driver))
     if (cancelled)
       console.log(`E2E sweep: отменено зависших тестовых заказов — ${cancelled}`)
     if (skipped.length)
