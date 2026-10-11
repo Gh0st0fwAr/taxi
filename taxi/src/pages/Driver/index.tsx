@@ -20,7 +20,7 @@ import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
 import { useLiveEstimatedOrders } from '../../tools/liveOrderProfit'
 import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
-import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
+import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isDriverOfferExpired, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
 import { orderControlModeSelectors } from '../../state/orderControlMode'
 import { EOrderControlMode } from '../../state/orderControlMode/constants'
 import OrderModeDecisionModal from '../../components/OrderModeDecisionModal'
@@ -359,7 +359,21 @@ const Driver: React.FC<IProps> = ({
       if (!myDriver)
         continue
 
-      const event = getOfferEvent(order, user.u_id) || (
+      const explicitEvent = getOfferEvent(order, user.u_id)
+      const storedOffer = getStoredDriverOffer(order.b_id, user.u_id)
+
+      // In external-emulator mode the backend may return an already assigned
+      // legacy offer on initial load. Do not turn that existing state into a
+      // fresh "offer accepted" modal unless this browser has a current offer
+      // for the order; real event payloads are still handled normally.
+      if (
+        emulatorOrdersEnabled &&
+        !explicitEvent &&
+        (!storedOffer || isDriverOfferExpired(storedOffer))
+      )
+        continue
+
+      const event = explicitEvent || (
         myDriver.c_state === EBookingDriverState.Performer ? 'accepted' :
           myDriver.c_state === EBookingDriverState.Canceled ? 'rejected' :
             undefined
