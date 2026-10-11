@@ -240,7 +240,7 @@ const Driver: React.FC<IProps> = ({
 
     previousVotingParticipations.current = activeOrders
       .filter(order => isDriverVotingCandidate(order, user.u_id))
-  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals])
+  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals, emulatorOrdersEnabled])
 
   useEffect(() => {
     if (user?.u_role !== EUserRoles.Driver || !user.u_id || !activeOrders)
@@ -420,7 +420,7 @@ const Driver: React.FC<IProps> = ({
         })
       }
     }
-  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals])
+  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals, emulatorOrdersEnabled])
 
   // Реакция "клиент выбрал другого водителя", которую клиентский эмулятор симулирует
   // локально (голосование/предложение без реального второго водителя).
