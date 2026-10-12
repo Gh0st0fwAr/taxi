@@ -25,8 +25,9 @@ const LATEST_START_MINUTES = 22 * 60
 export function calculateBaseQuoteCents(durationMinutes: number): number {
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return 0
 
-  const fullBlocks = Math.floor(durationMinutes / BILLING_BLOCK_MINUTES)
-  const blockTotal = fullBlocks * BASE_BLOCK_PRICE_CENTS
+  // The approved example is 129 minutes => 13 billed blocks (€32.50).
+  const billedBlocks = Math.ceil(durationMinutes / BILLING_BLOCK_MINUTES)
+  const blockTotal = billedBlocks * BASE_BLOCK_PRICE_CENTS
   return durationMinutes >= MINIMUM_DURATION_MINUTES
     ? Math.max(MINIMUM_BASE_PRICE_CENTS, blockTotal)
     : blockTotal
@@ -70,12 +71,8 @@ export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()):
     errors.push('Укажите количество детей от 1 до 8.')
   }
 
-  if (typeof safeDraft.childrenAges !== 'string') {
-    errors.push('Проверьте поле возраста детей.')
-  }
-  if (typeof safeDraft.notes !== 'string') {
-    errors.push('Проверьте поле комментария.')
-  }
+  if (typeof safeDraft.childrenAges !== 'string') errors.push('Проверьте поле возраста детей.')
+  if (typeof safeDraft.notes !== 'string') errors.push('Проверьте поле комментария.')
 
   return errors
 }
