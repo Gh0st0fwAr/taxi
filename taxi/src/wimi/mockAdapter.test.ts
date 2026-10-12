@@ -43,7 +43,7 @@ describe('WIMI demo booking rules', () => {
     expect(validateBookingDraft({ ...draft, durationMinutes: 110 })).toContain(
       'Минимальная длительность заказа — 120 минут.',
     )
-    expect(validateBookingDraft({ ...draft, startTime: '21:00', durationMinutes: 180 })).toContain(
+    expect(validateBookingDraft({ ...draft, startTime: '21:00', durationMinutes: 240 })).toContain(
       'Заказ должен завершиться не позднее 00:00.',
     )
   })
