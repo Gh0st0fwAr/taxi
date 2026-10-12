@@ -416,10 +416,12 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // Не очищаем controlled input отдельным Backspace: промежуточное пустое
-  // значение возвращает номер профиля через React/InputMask. fill() заменяет
-  // значение сразу и отправляет обычное input-событие маске.
-  await input.fill(digits)
+  // InputMask с alwaysShowMask может обработать fill() как ввод в текущую
+  // позицию и оставить часть номера профиля. Выделяем всё и печатаем поверх,
+  // не отправляя отдельное пустое значение через Backspace.
+  await input.click()
+  await input.press('ControlOrMeta+A')
+  await input.pressSequentially(digits, { delay: 25 })
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
