@@ -687,13 +687,17 @@ export async function cancelTestDriverAssignments(driver: ISession): Promise<ISw
       if (markedAsTest && occupyingAssignments.length === 0)
         console.log(`E2E driver cleanup: orderId=${orderId} marked=true occupyingAssignments=0`)
 
-      if (!markedAsTest || occupyingAssignments.length === 0)
+      // Наличие drivers в ответе /drive не гарантировано для старых записей.
+      // Тестовая метка — достаточное основание очистить заказ: реальные заказы
+      // без метки никогда не отменяем. Иначе пропущенное поле drivers оставляет
+      // тестовый заказ в API-списке, и он продолжает занимать места в UI.
+      if (!markedAsTest)
         continue
 
       try {
         console.log(
           `E2E driver cleanup: trying orderId=${orderId} marked=true assignments=` +
-          occupyingAssignments.map((item: any) => `u${item.u_id}:state${item.c_state}`).join(','),
+          (occupyingAssignments.map((item: any) => `u${item.u_id}:state${item.c_state}`).join(',') || 'not present in API response'),
         )
         await cancelOrder(driver, orderId)
 
