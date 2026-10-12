@@ -420,11 +420,17 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   // Ctrl+A/Backspace can leave stale digits in InputMask when React immediately
   // restores the Redux-backed value between keyboard events.
   await input.fill('')
-  const fixedPrefix = (await input.inputValue()).replace(/\D/g, '')
-  const digitsToType = fixedPrefix && digits.startsWith(fixedPrefix)
-    ? digits.slice(fixedPrefix.length)
-    : digits
-  await input.pressSequentially(digitsToType, { delay: 25 })
+
+  // This input is controlled by Redux. Wait until the cleared value has made
+  // the round trip through InputMask + onChange + setPhone before typing;
+  // otherwise React can restore the previous phone between keystrokes.
+  await expect.poll(
+    async() => (await input.inputValue()).replace(/\D/g, ''),
+    { message: 'поле телефона очищено до фиксированного кода страны', timeout: 10_000 },
+  ).toBe('233')
+
+  const digitsToType = digits.startsWith('233') ? digits.slice(3) : digits
+  await input.pressSequentially(digitsToType, { delay: 50 })
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
