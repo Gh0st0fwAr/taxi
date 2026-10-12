@@ -296,8 +296,8 @@ export default function Input({
         // stored phone (e.g. 233555000111) as the mask value makes InputMask
         // treat the prefix digits as editable digits and shifts the number.
         const maskPrefix = SITE_CONSTANTS.DEFAULT_PHONE_MASK.split(/[_9]/, 1)[0]
-        const prefixDigits = maskPrefix.replace(/\\D/g, '')
-        const phoneDigits = rawValue.replace(/\\D/g, '')
+        const prefixDigits = maskPrefix.replace(/\D/g, '')
+        const phoneDigits = rawValue.replace(/\D/g, '')
         return prefixDigits && phoneDigits.startsWith(prefixDigits)
           ? phoneDigits.slice(prefixDigits.length)
           : phoneDigits
