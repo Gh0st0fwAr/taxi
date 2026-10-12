@@ -652,6 +652,34 @@ const DRIVER_STATES_OCCUPYING_SEATS = new Set([
   DRIVER_STATE.Started,
 ])
 
+const STALE_ASSIGNMENT_AGE_MS = 24 * 60 * 60 * 1000
+
+/**
+ * b_created может приходить как ISO timestamp или SQL datetime без timezone.
+ * Для SQL datetime используем UTC явно, чтобы результат не зависел от timezone CI runner.
+ * Неизвестный/некорректный формат не считается просроченным.
+ */
+const orderCreatedAtMs = (order: any): number | null => {
+  const raw = order?.b_created
+  if (typeof raw === 'number' && Number.isFinite(raw))
+    return raw < 1_000_000_000_000 ? raw * 1000 : raw
+
+  const value = String(raw ?? '').trim()
+  if (!value)
+    return null
+
+  const normalized = /^\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}$/.test(value)
+    ? `${value.replace(' ', 'T')}Z`
+    : value
+  const timestamp = Date.parse(normalized)
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+const isOrderOlderThan = (order: any, ageMs: number, now = Date.now()): boolean => {
+  const createdAt = orderCreatedAtMs(order)
+  return createdAt !== null && now - createdAt > ageMs
+}
+
 /**
  * Убирает только тестовые назначения текущего водителя. В отличие от
  * cancelTestOrders(passenger), этот проход читает активный список именно
@@ -677,22 +705,24 @@ export async function cancelTestDriverAssignments(driver: ISession): Promise<ISw
         DRIVER_STATES_OCCUPYING_SEATS.has(Number(item?.c_state)),
       )
       const markedAsTest = isTestOrder(order)
+      const ownOccupyingAssignment = occupyingAssignments.some((item: any) =>
+        String(item?.u_id) === String(driver.userId),
+      )
+      const olderThan24Hours = isOrderOlderThan(order, STALE_ASSIGNMENT_AGE_MS)
+      // Explicitly stale assignments are eligible for cleanup even without a test
+      // marker, but only when the backend confirms that this exact driver has an
+      // active seat-occupying assignment. Unknown/missing creation dates and
+      // assignments belonging to other drivers are never cancelled by age alone.
+      const staleOwnAssignment = !markedAsTest && olderThan24Hours && ownOccupyingAssignment
 
-      // Active-order API returns a bounded list, not all driver assignments.
-      // A stale test order may belong to an older E2E driver account, so do not
-      // require its driver id to match the currently configured test account.
-      // The safety boundary is the explicit test marker; never cancel unmarked
-      // orders. Log the page so a no-op sweep is diagnosable instead of looking
-      // like a successful cleanup.
       if (markedAsTest && occupyingAssignments.length === 0)
         console.log(`E2E driver cleanup: orderId=${orderId} marked=true occupyingAssignments=0`)
 
-      // Наличие drivers в ответе /drive не гарантировано для старых записей.
-      // Тестовая метка — достаточное основание очистить заказ: реальные заказы
-      // без метки никогда не отменяем. Иначе пропущенное поле drivers оставляет
-      // тестовый заказ в API-списке, и он продолжает занимать места в UI.
-      if (!markedAsTest)
+      if (!markedAsTest && !staleOwnAssignment)
         continue
+
+      if (staleOwnAssignment)
+        console.warn(`E2E driver cleanup: cancelling stale assignment orderId=${orderId} created=${order?.b_created} ageHours=${Math.floor((Date.now() - (orderCreatedAtMs(order) ?? Date.now())) / 3_600_000)}`)
 
       try {
         console.log(
