@@ -23,11 +23,11 @@ const draft: WimiBookingDraft = {
 const fixedNow = new Date(2030, 4, 1, 9, 0, 0)
 
 describe('WIMI demo booking rules', () => {
-  test('calculates full 10-minute blocks in integer cents', () => {
+  test('calculates billed 10-minute blocks in integer cents', () => {
     expect(calculateBaseQuoteCents(60)).toBe(1500)
     expect(calculateBaseQuoteCents(90)).toBe(2250)
     expect(calculateBaseQuoteCents(120)).toBe(3000)
-    expect(calculateBaseQuoteCents(129)).toBe(3000)
+    expect(calculateBaseQuoteCents(129)).toBe(3250)
     expect(calculateBaseQuoteCents(130)).toBe(3250)
     expect(calculateBaseQuoteCents(0)).toBe(0)
     expect(calculateBaseQuoteCents(-10)).toBe(0)
@@ -36,30 +36,22 @@ describe('WIMI demo booking rules', () => {
   })
 
   test('rejects blank address and malformed or impossible dates', () => {
-    expect(validateBookingDraft({ ...draft, address: '   ' }, fixedNow)).toContain(
-      'Укажите адрес оказания услуги.',
-    )
+    expect(validateBookingDraft({ ...draft, address: '   ' }, fixedNow)).toContain('Укажите адрес оказания услуги.')
     for (const date of ['', '2030-2-01', '2030-02-30', 'not-a-date']) {
       expect(validateBookingDraft({ ...draft, date }, fixedNow)).toContain('Укажите корректную дату.')
     }
   })
 
   test('rejects past dates and permits a future date', () => {
-    expect(validateBookingDraft({ ...draft, date: '2030-04-30' }, fixedNow)).toContain(
-      'Дата заказа не может быть в прошлом.',
-    )
+    expect(validateBookingDraft({ ...draft, date: '2030-04-30' }, fixedNow)).toContain('Дата заказа не может быть в прошлом.')
     expect(validateBookingDraft(draft, fixedNow)).toEqual([])
   })
 
   test('rejects a start time in the past or equal to now on the current date', () => {
     const now = new Date(2030, 4, 10, 10, 0, 0)
     const today = '2030-05-10'
-    expect(validateBookingDraft({ ...draft, date: today, startTime: '09:59' }, now)).toContain(
-      'Выберите время в будущем.',
-    )
-    expect(validateBookingDraft({ ...draft, date: today, startTime: '10:00' }, now)).toContain(
-      'Выберите время в будущем.',
-    )
+    expect(validateBookingDraft({ ...draft, date: today, startTime: '09:59' }, now)).toContain('Выберите время в будущем.')
+    expect(validateBookingDraft({ ...draft, date: today, startTime: '10:00' }, now)).toContain('Выберите время в будущем.')
     expect(validateBookingDraft({ ...draft, date: today, startTime: '10:01' }, now)).toEqual([])
   })
 
@@ -74,17 +66,11 @@ describe('WIMI demo booking rules', () => {
   })
 
   test('enforces minimum duration and midnight boundary', () => {
-    expect(validateBookingDraft({ ...draft, durationMinutes: 119 }, fixedNow)).toContain(
-      'Минимальная длительность заказа — 120 минут.',
-    )
+    expect(validateBookingDraft({ ...draft, durationMinutes: 119 }, fixedNow)).toContain('Минимальная длительность заказа — 120 минут.')
     expect(validateBookingDraft({ ...draft, startTime: '21:00', durationMinutes: 180 }, fixedNow)).toEqual([])
-    expect(validateBookingDraft({ ...draft, startTime: '21:00', durationMinutes: 190 }, fixedNow)).toContain(
-      'Заказ должен завершиться не позднее 00:00.',
-    )
+    expect(validateBookingDraft({ ...draft, startTime: '21:00', durationMinutes: 190 }, fixedNow)).toContain('Заказ должен завершиться не позднее 00:00.')
     for (const durationMinutes of [0, -120, 120.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(validateBookingDraft({ ...draft, durationMinutes }, fixedNow)).toContain(
-        'Минимальная длительность заказа — 120 минут.',
-      )
+      expect(validateBookingDraft({ ...draft, durationMinutes }, fixedNow)).toContain('Минимальная длительность заказа — 120 минут.')
     }
   })
 
@@ -92,9 +78,7 @@ describe('WIMI demo booking rules', () => {
     expect(validateBookingDraft({ ...draft, childrenCount: 1 }, fixedNow)).toEqual([])
     expect(validateBookingDraft({ ...draft, childrenCount: 8 }, fixedNow)).toEqual([])
     for (const childrenCount of [0, 9, 1.5, Number.NaN]) {
-      expect(validateBookingDraft({ ...draft, childrenCount }, fixedNow)).toContain(
-        'Укажите количество детей от 1 до 8.',
-      )
+      expect(validateBookingDraft({ ...draft, childrenCount }, fixedNow)).toContain('Укажите количество детей от 1 до 8.')
     }
   })
 
@@ -110,11 +94,9 @@ describe('WIMI demo booking rules', () => {
     expect(order.notes).toBe('')
   })
 
-  test('uses full blocks for 129 minutes and rejects invalid drafts on create', () => {
-    expect(createDemoOrder({ ...draft, durationMinutes: 129 }, fixedNow).estimatedTotalCents).toBe(3000)
+  test('uses the documented 129-minute example and rejects invalid drafts on create', () => {
+    expect(createDemoOrder({ ...draft, durationMinutes: 129 }, fixedNow).estimatedTotalCents).toBe(3250)
     expect(createDemoOrder({ ...draft, durationMinutes: 130 }, fixedNow).estimatedTotalCents).toBe(3250)
-    expect(() => createDemoOrder({ ...draft, address: ' ' }, fixedNow)).toThrow(
-      'Укажите адрес оказания услуги.',
-    )
+    expect(() => createDemoOrder({ ...draft, address: ' ' }, fixedNow)).toThrow('Укажите адрес оказания услуги.')
   })
 })
