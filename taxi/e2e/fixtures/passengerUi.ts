@@ -416,21 +416,11 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // Use Playwright's fill operation to clear the controlled masked input.
-  // Ctrl+A/Backspace can leave stale digits in InputMask when React immediately
-  // restores the Redux-backed value between keyboard events.
-  await input.fill('')
-
-  // This input is controlled by Redux. Wait until the cleared value has made
-  // the round trip through InputMask + onChange + setPhone before typing;
-  // otherwise React can restore the previous phone between keystrokes.
-  await expect.poll(
-    async() => (await input.inputValue()).replace(/\D/g, ''),
-    { message: 'поле телефона очищено до фиксированного кода страны', timeout: 10_000 },
-  ).toBe('233')
-
-  const digitsToType = digits.startsWith('233') ? digits.slice(3) : digits
-  await input.pressSequentially(digitsToType, { delay: 50 })
+  // InputMask is controlled by React/Redux. Clearing it and then typing leaves
+  // stale digits in the mask (the clear event is normalized to a numeric value).
+  // Fill the complete test number in one input operation instead of racing
+  // separate clear/type events against the controlled value.
+  await input.fill(digits)
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
