@@ -416,28 +416,14 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // InputMask + controlled numeric value не сбрасывается надёжно через fill(''):
-  // React восстанавливает номер профиля. Сбрасываем редактируемые позиции
-  // клавиатурой, сохраняя фиксированный префикс маски, и вводим только хвост.
-  const initial = (await input.inputValue()).replace(/\D/g, '')
-  const prefix = initial.slice(0, Math.min(3, initial.length))
-  await input.click()
-  await input.press('Control+A')
-  await input.press('Backspace')
+  // Не очищаем controlled input отдельным Backspace: промежуточное пустое
+  // значение возвращает номер профиля через React/InputMask. fill() заменяет
+  // значение сразу и отправляет обычное input-событие маске.
+  await input.fill(digits)
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
-      message: 'номер профиля очищен, префикс маски сохранён',
-      timeout: 5_000,
-    })
-    .toBe(prefix)
-
-  const rest = digits.startsWith(prefix) ? digits.slice(prefix.length) : digits
-  await input.pressSequentially(rest, { delay: 60 })
-
-  await expect
-    .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
-      message: 'поле телефона содержит введённый номер',
+      message: 'поле телефона содержит введённый тестовый номер',
       timeout: 15_000,
     })
     .toBe(digits)
