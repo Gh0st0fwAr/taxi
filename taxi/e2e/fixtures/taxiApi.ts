@@ -686,9 +686,9 @@ const isOrderOlderThan = (order: any, ageMs: number, now = Date.now()): boolean 
  * водителя: заказы могут быть назначены ему, но отсутствовать в списке
  * пассажира, от имени которого выполняется обычная уборка.
  *
- * Непомеченные заказы не изменяются. После каждого прохода список перечитывается,
- * поскольку backend возвращает активные заказы порциями. Если отмена не прошла,
- * заказ остаётся в диагностике и не скрывается как успешно очищенный.
+ * Непомеченные назначения снимаются только по правилу возраста > 24 часов и
+ * при подтверждённом активном назначении текущего водителя. После каждого прохода
+ * список перечитывается; неудачная отмена остаётся в диагностике.
  */
 export async function cancelTestDriverAssignments(driver: ISession): Promise<ISweepResult> {
   let cancelled = 0
@@ -726,7 +726,7 @@ export async function cancelTestDriverAssignments(driver: ISession): Promise<ISw
 
       try {
         console.log(
-          `E2E driver cleanup: trying orderId=${orderId} marked=true assignments=` +
+          `E2E driver cleanup: trying orderId=${orderId} marked=${markedAsTest} staleOwnAssignment=${staleOwnAssignment} assignments=` +
           (occupyingAssignments.map((item: any) => `u${item.u_id}:state${item.c_state}`).join(',') || 'not present in API response'),
         )
         await cancelOrder(driver, orderId)
