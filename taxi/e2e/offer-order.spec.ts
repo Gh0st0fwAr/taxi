@@ -464,8 +464,7 @@ test('А.1.3 — предложение: от создания заказа до
     driver1.page, 'success', 'водитель 1 уведомлён, что его предложение принято')
   await openDriverMap(driver1.page)
 
-  await expectUiDriverState
-    driver1.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
+  await expectUiDriverState(driver1.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
   await clickPrimaryAction(driver1.page)
   await expectBackendState(orderId, driver1, DRIVER_STATE.Arrived, 'бэкенд перевёл заказ в Arrived')
   await expectUiDriverState(driver1.page, DRIVER_STATE.Arrived, 'карта показывает прибытие')
