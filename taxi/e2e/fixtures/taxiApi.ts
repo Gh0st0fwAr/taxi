@@ -194,7 +194,7 @@ export function boardingCodeOf(car: ICar): string {
     car.registration_plate,
   ]
   for (const candidate of candidates) {
-  const normalized = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(value)
+    const normalized = String(candidate ?? '').replace(/\D/g, '').slice(0, 4)
     if (/^\d{3,4}$/.test(normalized))
       return normalized
   }
