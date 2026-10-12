@@ -416,12 +416,10 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // InputMask with alwaysShowMask keeps the country prefix even when all
-  // editable digits are selected. Clear the editable part first, read the
-  // remaining fixed prefix, and type only the rest of the requested number.
-  await input.click()
-  await input.press('ControlOrMeta+A')
-  await input.press('Backspace')
+  // Use Playwright's fill operation to clear the controlled masked input.
+  // Ctrl+A/Backspace can leave stale digits in InputMask when React immediately
+  // restores the Redux-backed value between keyboard events.
+  await input.fill('')
   const fixedPrefix = (await input.inputValue()).replace(/\D/g, '')
   const digitsToType = fixedPrefix && digits.startsWith(fixedPrefix)
     ? digits.slice(fixedPrefix.length)
