@@ -47,7 +47,7 @@ jobs:
       - name: Run focused regression test
         # Сначала проверяем последний исправленный путь: получение кода посадки
         # и подтверждение заказа. Полный E2E запускается только при успехе этого шага.
-        run: 'npx playwright test e2e/driver-boarding.spec.ts --grep "A: правильный код"'
+        run: 'npx playwright test e2e/standard-order.spec.ts e2e/offer-order.spec.ts e2e/passenger-order-creation.spec.ts --grep "А.1.1|А.1.3|008-B|008-C"'
         env:
           E2E_APP_URL: http://localhost:3000
           E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
