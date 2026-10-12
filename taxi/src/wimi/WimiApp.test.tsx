@@ -58,8 +58,12 @@ describe('WIMI booking UI', () => {
 
   test('preserves edited values when returning from review and recalculates the quote', () => {
     changeValue('#wimi-address', 'Демо-адрес, 1')
+    changeValue('#wimi-duration', '121')
+    expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('32,50')
     changeValue('#wimi-duration', '130')
     expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('32,50')
+    changeValue('#wimi-duration', '131')
+    expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('35,00')
     clickButton('Проверить заказ')
     expect(container.querySelector('h1')?.textContent).toBe('Проверьте детали заказа')
     expect(container.textContent).toContain('Демо-адрес, 1')
