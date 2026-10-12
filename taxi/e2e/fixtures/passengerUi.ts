@@ -416,11 +416,11 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // InputMask is controlled by React/Redux. Clearing it and then typing leaves
-  // stale digits in the mask (the clear event is normalized to a numeric value).
-  // Fill the complete test number in one input operation instead of racing
-  // separate clear/type events against the controlled value.
-  await input.fill(digits)
+  // The mask already contains the fixed +233 country prefix. Typing those
+  // digits again shifts them into the editable slots (e.g. 233443535523).
+  // Supply only the national part; the displayed value must still include 233.
+  const nationalDigits = digits.startsWith('233') ? digits.slice(3) : digits
+  await input.fill(nationalDigits)
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
