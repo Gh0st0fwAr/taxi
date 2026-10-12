@@ -416,14 +416,24 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // Поле контролируемое, с маской страны. Сначала сбрасываем номер профиля,
-  // затем читаем реальный префикс, который оставила маска, и вводим только
-  // недостающие цифры. Ввод полного номера поверх префикса сдвигает каретку
-  // и даёт другой номер; fill(digits) в этой маске не заменяет значение надёжно.
-  await input.fill('')
-  const shown = (await input.inputValue()).replace(/\D/g, '')
-  const rest = digits.startsWith(shown) ? digits.slice(shown.length) : digits
-  await input.pressSequentially(rest, { delay: 40 })
+  // InputMask + controlled numeric value не сбрасывается надёжно через fill(''):
+  // React восстанавливает номер профиля. Сбрасываем редактируемые позиции
+  // клавиатурой, сохраняя фиксированный префикс маски, и вводим только хвост.
+  const initial = (await input.inputValue()).replace(/\D/g, '')
+  const prefix = initial.slice(0, Math.min(3, initial.length))
+  await input.click()
+  await input.press('Control+A')
+  await input.press('Backspace')
+
+  await expect
+    .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
+      message: 'номер профиля очищен, префикс маски сохранён',
+      timeout: 5_000,
+    })
+    .toBe(prefix)
+
+  const rest = digits.startsWith(prefix) ? digits.slice(prefix.length) : digits
+  await input.pressSequentially(rest, { delay: 60 })
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
