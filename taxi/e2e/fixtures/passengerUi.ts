@@ -416,12 +416,14 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // InputMask с alwaysShowMask может обработать fill() как ввод в текущую
-  // позицию и оставить часть номера профиля. Выделяем всё и печатаем поверх,
-  // не отправляя отдельное пустое значение через Backspace.
+  // InputMask does not reliably handle Playwright fill() on this fixed-prefix
+  // mask: it shifts digits into the prefix slots. Type into the editable slots
+  // as a user would, leaving the fixed +233 prefix untouched.
+  const nationalDigits = digits.startsWith('233') ? digits.slice(3) : digits
   await input.click()
-  await input.press('ControlOrMeta+A')
-  await input.pressSequentially(digits, { delay: 25 })
+  await input.press('Control+A')
+  await input.press('Backspace')
+  await input.pressSequentially(nationalDigits, { delay: 40 })
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {

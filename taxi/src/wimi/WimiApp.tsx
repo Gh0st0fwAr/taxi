@@ -1,0 +1,215 @@
+import React, { FormEvent, useMemo, useState } from 'react'
+import { Link, Route, Routes, useNavigate } from 'react-router-dom'
+import {
+  calculateBaseQuoteCents,
+  createDemoOrder,
+  MINIMUM_DURATION_MINUTES,
+  validateBookingDraft,
+  WimiBookingDraft,
+  WimiDemoOrder,
+} from './mockAdapter'
+
+function localDateString(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function money(cents: number): string {
+  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'EUR' }).format(cents / 100)
+}
+
+const initialDraft = (): WimiBookingDraft => ({
+  address: '',
+  date: localDateString(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+  startTime: '10:00',
+  durationMinutes: 120,
+  childrenCount: 1,
+  childrenAges: '',
+  notes: '',
+})
+
+const WimiApp: React.FC = () => {
+  const [draft, setDraft] = useState<WimiBookingDraft>(initialDraft)
+  const [order, setOrder] = useState<WimiDemoOrder | null>(null)
+  const [errors, setErrors] = useState<string[]>([])
+  const [step, setStep] = useState<'details' | 'review' | 'created'>('details')
+  const navigate = useNavigate()
+
+  const quoteCents = useMemo(() => calculateBaseQuoteCents(draft.durationMinutes), [draft.durationMinutes])
+  const update = <K extends keyof WimiBookingDraft>(key: K, value: WimiBookingDraft[K]) => {
+    setDraft(current => ({ ...current, [key]: value }))
+  }
+
+  const review = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nextErrors = validateBookingDraft(draft)
+    setErrors(nextErrors)
+    if (nextErrors.length === 0) setStep('review')
+  }
+
+  const submitDemoOrder = () => {
+    try {
+      const created = createDemoOrder(draft)
+      setOrder(created)
+      setErrors([])
+      setStep('created')
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : 'Не удалось проверить данные заказа.'])
+      setStep('details')
+    }
+  }
+
+  const reset = () => {
+    setDraft(initialDraft())
+    setOrder(null)
+    setErrors([])
+    setStep('details')
+    navigate('/')
+  }
+
+  return (
+    <div className="wimi-shell">
+      <header className="wimi-header">
+        <Link to="/" className="wimi-brand" aria-label="WIMI KIDS — главная">
+          <span className="wimi-brand-mark">W</span>
+          <span><strong>WIMI KIDS</strong><small>Помощь с заботой о детях</small></span>
+        </Link>
+        <span className="wimi-header-label">Заказ няни</span>
+      </header>
+
+      <main className="wimi-main">
+        <div className="wimi-demo-notice" role="status">
+          <strong>Демонстрационный режим</strong>
+          <span>Реальный заказ не отправляется. Не вводите настоящие персональные данные.</span>
+        </div>
+
+        {step === 'created' && order ? (
+          <section className="wimi-card wimi-result" aria-labelledby="created-title">
+            <div className="wimi-success-icon" aria-hidden="true">✓</div>
+            <p className="wimi-eyebrow">ДЕМО-ЗАКАЗ СОЗДАН ЛОКАЛЬНО</p>
+            <h1 id="created-title">Проверка сценария завершена</h1>
+            <p className="wimi-muted">Это тестовая запись в памяти страницы. Няня не назначена, уведомления не отправлены.</p>
+            <div className="wimi-order-id">{order.id}</div>
+            <div className="wimi-summary">
+              <SummaryRow label="Адрес" value={order.address} />
+              <SummaryRow label="Дата" value={order.date} />
+              <SummaryRow label="Начало" value={order.startTime} />
+              <SummaryRow label="Длительность" value={`${order.durationMinutes} минут`} />
+              <SummaryRow label="Дети" value={String(order.childrenCount)} />
+              <SummaryRow label="Расчётная базовая сумма" value={money(order.estimatedTotalCents)} />
+            </div>
+            <p className="wimi-disclaimer">Итоговая сумма рассчитывается сервером в рабочей версии. Эта сумма — только демонстрационный предварительный расчёт.</p>
+            <button className="wimi-button wimi-button-primary wimi-full" onClick={reset}>Создать ещё один демо-заказ</button>
+          </section>
+        ) : (
+          <>
+            <section className="wimi-intro">
+              <p className="wimi-eyebrow">WIMI KIDS · СЕРВИС ВЫЗОВА НЯНЬ</p>
+              <h1>{step === 'review' ? 'Проверьте детали заказа' : 'Найдём время для заботы'}</h1>
+              <p className="wimi-muted">{step === 'review' ? 'Перед созданием демо-заказа проверьте адрес, время и предварительную сумму.' : 'Укажите основные детали — сейчас мы проверяем пользовательский сценарий без подключения к реальным заказам.'}</p>
+            </section>
+
+            <div className="wimi-steps" aria-label="Этапы заказа">
+              <div className={step === 'details' ? 'wimi-step is-active' : 'wimi-step is-done'}><span>1</span><div><strong>Детали</strong><small>Услуга и время</small></div></div>
+              <div className={step === 'review' ? 'wimi-step is-active' : 'wimi-step'}><span>2</span><div><strong>Проверка</strong><small>Сумма и данные</small></div></div>
+              <div className="wimi-step"><span>3</span><div><strong>Готово</strong><small>Демо-результат</small></div></div>
+            </div>
+
+            {errors.length > 0 && (
+              <div className="wimi-errors" role="alert">
+                <strong>Проверьте данные:</strong>
+                <ul>{errors.map(error => <li key={error}>{error}</li>)}</ul>
+              </div>
+            )}
+
+            {step === 'details' ? (
+              <form className="wimi-card" onSubmit={review} noValidate>
+                <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">⌂</span><div><h2>Где и когда нужна няня?</h2><p>Время указывается по месту оказания услуги.</p></div></div>
+                <div className="wimi-field">
+                  <label htmlFor="wimi-address">Адрес оказания услуги <span>*</span></label>
+                  <input id="wimi-address" autoComplete="street-address" value={draft.address} onChange={event => update('address', event.target.value)} placeholder="Улица, дом, город" required />
+                </div>
+                <div className="wimi-grid-two">
+                  <div className="wimi-field">
+                    <label htmlFor="wimi-date">Дата <span>*</span></label>
+                    <input id="wimi-date" type="date" min={localDateString(new Date())} value={draft.date} onChange={event => update('date', event.target.value)} required />
+                  </div>
+                  <div className="wimi-field">
+                    <label htmlFor="wimi-time">Время начала <span>*</span></label>
+                    <input id="wimi-time" type="time" min="06:00" max="22:00" value={draft.startTime} onChange={event => update('startTime', event.target.value)} required />
+                    <small>Заказы принимаются с 06:00 до 22:00.</small>
+                  </div>
+                </div>
+                <div className="wimi-field">
+                  <label htmlFor="wimi-duration">Длительность, минут <span>*</span></label>
+                  <input id="wimi-duration" type="number" min={MINIMUM_DURATION_MINUTES} max="1080" step="10" value={draft.durationMinutes} onChange={event => update('durationMinutes', Number(event.target.value))} required />
+                  <small>Минимум 120 минут. В 00:00 активный заказ автоматически закрывается.</small>
+                </div>
+
+                <div className="wimi-card-heading wimi-section-divider"><span className="wimi-heading-icon" aria-hidden="true">♡</span><div><h2>О детях</h2><p>Не указывайте имена и другие лишние персональные данные.</p></div></div>
+                <div className="wimi-grid-two">
+                  <div className="wimi-field">
+                    <label htmlFor="wimi-count">Количество детей <span>*</span></label>
+                    <select id="wimi-count" value={draft.childrenCount} onChange={event => update('childrenCount', Number(event.target.value))}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(count => <option value={count} key={count}>{count}</option>)}
+                    </select>
+                  </div>
+                  <div className="wimi-field">
+                    <label htmlFor="wimi-ages">Возраст детей</label>
+                    <input id="wimi-ages" value={draft.childrenAges} onChange={event => update('childrenAges', event.target.value)} placeholder="Например: 3 и 6 лет" />
+                  </div>
+                </div>
+                <div className="wimi-field">
+                  <label htmlFor="wimi-notes">Комментарий (необязательно)</label>
+                  <textarea id="wimi-notes" rows={3} value={draft.notes} onChange={event => update('notes', event.target.value)} placeholder="Особенности задачи без медицинских и других чувствительных данных" />
+                </div>
+
+                <div className="wimi-price-preview">
+                  <div><span>Предварительная базовая стоимость</span><small>Минимум €30; доплаты за дополнительные услуги не включены</small></div>
+                  <strong>{money(quoteCents)}</strong>
+                </div>
+                <p className="wimi-disclaimer">Расчёт демонстрационный. В рабочем сервисе тариф и итоговую сумму подтверждает сервер. Оплата — наличными няне вне сервиса.</p>
+                <button type="submit" className="wimi-button wimi-button-primary wimi-full">Проверить заказ <span aria-hidden="true">→</span></button>
+              </form>
+            ) : (
+              <section className="wimi-card">
+                <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">✓</span><div><h2>Детали демо-заказа</h2><p>Сверьте информацию перед локальным созданием тестовой записи.</p></div></div>
+                <div className="wimi-summary">
+                  <SummaryRow label="Адрес" value={draft.address} />
+                  <SummaryRow label="Дата" value={draft.date} />
+                  <SummaryRow label="Время начала" value={draft.startTime} />
+                  <SummaryRow label="Длительность" value={`${draft.durationMinutes} минут`} />
+                  <SummaryRow label="Количество детей" value={String(draft.childrenCount)} />
+                  <SummaryRow label="Возраст" value={draft.childrenAges || 'Не указан'} />
+                  <SummaryRow label="Комментарий" value={draft.notes || 'Нет'} />
+                  <SummaryRow label="Предварительная базовая стоимость" value={money(quoteCents)} />
+                </div>
+                <p className="wimi-disclaimer">Создание не вызывает API и не назначает няню. Демо-заказ хранится только в состоянии открытой страницы.</p>
+                <div className="wimi-actions">
+                  <button type="button" className="wimi-button wimi-button-secondary" onClick={() => setStep('details')}>Назад к данным</button>
+                  <button type="button" className="wimi-button wimi-button-primary" onClick={submitDemoOrder}>Создать демо-заказ</button>
+                </div>
+              </section>
+            )}
+          </>
+        )}
+        <footer className="wimi-footer">WIMI KIDS · Прототип пользовательского сценария · Реальные заказы отключены</footer>
+      </main>
+    </div>
+  )
+}
+
+const SummaryRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="wimi-summary-row"><span>{label}</span><strong>{value}</strong></div>
+)
+
+const WimiRouteFallback = () => (
+  <section className="wimi-card">
+    <h1>Страница не найдена</h1>
+    <p className="wimi-muted">Откройте форму заказа, чтобы продолжить.</p>
+    <Link className="wimi-button wimi-button-primary" to="/">Перейти к заказу</Link>
+  </section>
+)
+
+export default function WimiRoot() {
+  return <Routes><Route path="/*" element={<WimiApp />} /><Route path="*" element={<WimiRouteFallback />} /></Routes>
+}
