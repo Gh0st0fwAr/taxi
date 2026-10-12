@@ -56,7 +56,7 @@ module.exports = {
   appBuild: resolveApp(process.env.BUILD_MODE === 'wimi' ? 'build-wimi' : 'build'),
   appPublic: resolveApp('public'),
   appHtml: resolveApp('public/index.html'),
-  appIndexJs: resolveModule(resolveApp, 'src/index'),
+  appIndexJs: resolveModule(resolveApp, process.env.BUILD_MODE === 'wimi' ? 'src/wimi/index' : 'src/index'),
   appPackageJson: resolveApp('package.json'),
   appSrc: resolveApp('src'),
   srcComponents: resolveApp('src/components'),
