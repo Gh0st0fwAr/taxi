@@ -17,6 +17,7 @@ import { expectAppBooted } from './fixtures/appShell'
 import {
   boardingCodeOf,
   cancelOrder,
+  cancelTestDriverAssignments,
   cancelTestOrders,
   choosePerformer,
   createVotingOrder,
@@ -35,6 +36,7 @@ import {
   PICKUP,
   boardingCodeInput,
   clickPrimaryAction,
+  confirmActionResult,
   expectUiDriverState,
   isBoardingFormVisible,
   measureUiStateDelay,
@@ -68,6 +70,7 @@ test.beforeAll(async() => {
   car = await getDriverCar(driver)
   boardingCode = boardingCodeOf(car)
   await goOnline(driver, car, PICKUP)
+  console.log('E2E driver sweep (перед прогоном):', await cancelTestDriverAssignments(driver))
 })
 
 const reason = (error: unknown) => (error as Error)?.message ?? String(error)
@@ -108,6 +111,7 @@ test.afterAll(async() => {
     return
   try {
     const { cancelled, skipped } = await cancelTestOrders(passenger)
+    console.log('E2E driver sweep (после прогона):', await cancelTestDriverAssignments(driver))
     if (cancelled)
       console.log(`E2E sweep: отменено зависших тестовых заказов — ${cancelled}`)
     if (skipped.length)
@@ -157,6 +161,7 @@ async function driveToBoarding(page: import('@playwright/test').Page, orderId: s
   const take = page.getByTestId('driver-order-take')
   await expect(take, 'карточка голосового заказа с кнопкой отклика').toBeVisible({ timeout: 120_000 })
   await take.click()
+  await confirmActionResult(page, 'success', 'приложение подтвердило отклик водителя')
 
   await expectBackendState(orderId, DRIVER_STATE.Considering, 'водитель стал кандидатом')
 

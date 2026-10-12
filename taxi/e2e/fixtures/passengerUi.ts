@@ -295,7 +295,7 @@ export const PASSENGER_ORDER_POINTS: Readonly<Record<'pickup' | 'destination' | 
   pickup: { query: 'улица Содружества 35 Ростов-на-Дону', match: 'Содружества' },
   destination: { query: 'Акмолинская улица 79 Ростов-на-Дону', match: 'Акмолинская' },
   // Таганрог, 52 км: единственный маршрут, на котором UI сам выставляет класс поездки «2».
-  intercityDestination: { query: 'Таганрог, Петровская улица 10', match: 'Bogudoniya' },
+  intercityDestination: { query: 'Таганрог, Петровская улица 10', match: 'Петровская' },
 }
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -415,21 +415,17 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const digits = phone.replace(/\D/g, '')
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
-  await input.click()
-  await input.press('Control+A')
-  await input.press('Backspace')
 
-  // Маска (`+233(___)-___-___`) сама показывает код страны. Если набрать номер
-  // целиком, часть цифр совпадёт с этим префиксом, и результат зависит от
-  // положения каретки (замерено: `233335550001` вместо `233555000111`). Поэтому
-  // после очистки набирается только то, чего в маске ещё нет.
-  const shown = (await input.inputValue()).replace(/\D/g, '')
-  const rest = digits.startsWith(shown) ? digits.slice(shown.length) : digits
-  await input.pressSequentially(rest, { delay: 40 })
+  // InputMask с alwaysShowMask может обработать fill() как ввод в текущую
+  // позицию и оставить часть номера профиля. Выделяем всё и печатаем поверх,
+  // не отправляя отдельное пустое значение через Backspace.
+  await input.click()
+  await input.press('ControlOrMeta+A')
+  await input.pressSequentially(digits, { delay: 25 })
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
-      message: 'поле телефона содержит введённый номер',
+      message: 'поле телефона содержит введённый тестовый номер',
       timeout: 15_000,
     })
     .toBe(digits)

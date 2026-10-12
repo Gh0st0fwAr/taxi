@@ -1,0 +1,62 @@
+name: WIMI foundation validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wimi-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: taxi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: taxi/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build Taxi
+        env:
+          # Existing Sass/CSS compatibility warnings are legacy baseline issues;
+          # keep compilation warnings visible without turning them into errors.
+          CI: "false"
+        run: npm run build:taxi
+
+      - name: Build WIMI
+        env:
+          CI: "false"
+        run: npm run build:wimi
+
+      - name: Run Jest
+        env:
+          CI: "true"
+        run: npm run test:nix -- --runInBand
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wimi-validation-builds
+          path: |
+            taxi/build/
+            taxi/build-wimi/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -207,6 +207,16 @@ export async function goOnline(
   car: ICar,
   position: { latitude: number; longitude: number },
 ): Promise<void> {
+  // Сначала освобождаем водителя от незавершённых назначений прошлых E2E /
+  // emulator-прогонов. Иначе старые Performer/Arrived/Started занимают места,
+  // и UI скрывает новые тестовые заказы по capacity guard.
+  const cleanup = await cancelTestDriverAssignments(session)
+  if (cleanup.skipped.length)
+    throw new BackendError(
+      `не удалось освободить тестовые назначения водителя ${session.userId}: ${cleanup.skipped.join(', ')}`,
+      cleanup,
+    )
+
   const drive = await post(`/car/${car.c_id}/drive`, authFields(session))
   // «car is already driven by this user» — нормальное состояние повторного запуска.
   if (drive?.status === 'error' && !/already driven/i.test(String(drive?.message ?? '')))
@@ -550,7 +560,7 @@ export async function isOrderActiveFor(session: ISession, orderId: string): Prom
 const TEST_ORDER_MARKERS = [/\[E2E\b/i, /\[DRV:\s*\d+\]/i, /\[CASE\]/i]
 
 const orderMarkerText = (order: any): string =>
-  [order?.b_custom_comment, order?.b_comments].map(value => String(value ?? '')).join(' ')
+  [order?.b_custom_comment, order?.b_comments, order?.b_comment].map(value => String(value ?? '')).join(' ')
 
 /** Заказ создан тестовой оснасткой — этого проекта или его эмулятора. */
 export const isTestOrder = (order: any): boolean =>
@@ -635,3 +645,132 @@ export const cancelTestOrders = (
 ): Promise<ISweepResult> =>
   sweepActiveOrders(passenger, (orderId, order) =>
     orderId !== keepOrderId && isTestOrder(order))
+
+const DRIVER_STATES_OCCUPYING_SEATS = new Set([
+  DRIVER_STATE.Performer,
+  DRIVER_STATE.Arrived,
+  DRIVER_STATE.Started,
+])
+
+const STALE_ASSIGNMENT_AGE_MS = 24 * 60 * 60 * 1000
+
+/**
+ * b_created может приходить как ISO timestamp или SQL datetime без timezone.
+ * Для SQL datetime используем UTC явно, чтобы результат не зависел от timezone CI runner.
+ * Неизвестный/некорректный формат не считается просроченным.
+ */
+const orderCreatedAtMs = (order: any): number | null => {
+  const raw = order?.b_created
+  if (typeof raw === 'number' && Number.isFinite(raw))
+    return raw < 1_000_000_000_000 ? raw * 1000 : raw
+
+  const value = String(raw ?? '').trim()
+  if (!value)
+    return null
+
+  const normalized = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(value)
+    ? `${value.replace(' ', 'T')}Z`
+    : value
+  const timestamp = Date.parse(normalized)
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+const isOrderOlderThan = (order: any, ageMs: number, now = Date.now()): boolean => {
+  const createdAt = orderCreatedAtMs(order)
+  return createdAt !== null && now - createdAt > ageMs
+}
+
+/**
+ * Убирает только тестовые назначения текущего водителя. В отличие от
+ * cancelTestOrders(passenger), этот проход читает активный список именно
+ * водителя: заказы могут быть назначены ему, но отсутствовать в списке
+ * пассажира, от имени которого выполняется обычная уборка.
+ *
+ * Непомеченные назначения снимаются только по правилу возраста > 24 часов и
+ * при подтверждённом активном назначении текущего водителя. После каждого прохода
+ * список перечитывается; неудачная отмена остаётся в диагностике.
+ */
+export async function cancelTestDriverAssignments(driver: ISession): Promise<ISweepResult> {
+  let cancelled = 0
+  const skipped = new Set<string>()
+
+  for (let pass = 0; pass < ACTIVE_ORDERS_SWEEP_PASSES; pass += 1) {
+    const entries = Object.entries<any>(await listActiveOrders(driver))
+    if (!entries.length)
+      break
+
+    let cancelledInPass = 0
+    for (const [orderId, order] of entries) {
+      const occupyingAssignments = (order?.drivers ?? []).filter((item: any) =>
+        DRIVER_STATES_OCCUPYING_SEATS.has(Number(item?.c_state)),
+      )
+      const markedAsTest = isTestOrder(order)
+      const ownOccupyingAssignment = occupyingAssignments.some((item: any) =>
+        String(item?.u_id) === String(driver.userId),
+      )
+      const olderThan24Hours = isOrderOlderThan(order, STALE_ASSIGNMENT_AGE_MS)
+      // Explicitly stale assignments are eligible for cleanup even without a test
+      // marker, but only when the backend confirms that this exact driver has an
+      // active seat-occupying assignment. Unknown/missing creation dates and
+      // assignments belonging to other drivers are never cancelled by age alone.
+      const staleOwnAssignment = !markedAsTest && olderThan24Hours && ownOccupyingAssignment
+
+      if (markedAsTest && occupyingAssignments.length === 0)
+        console.log(`E2E driver cleanup: orderId=${orderId} marked=true occupyingAssignments=0`)
+
+      if (!markedAsTest && !staleOwnAssignment)
+        continue
+
+      if (staleOwnAssignment)
+        console.warn(`E2E driver cleanup: cancelling stale assignment orderId=${orderId} created=${order?.b_created} ageHours=${Math.floor((Date.now() - (orderCreatedAtMs(order) ?? Date.now())) / 3_600_000)}`)
+
+      try {
+        console.log(
+          `E2E driver cleanup: trying orderId=${orderId} marked=${markedAsTest} staleOwnAssignment=${staleOwnAssignment} assignments=` +
+          (occupyingAssignments.map((item: any) => `u${item.u_id}:state${item.c_state}`).join(',') || 'not present in API response'),
+        )
+        await cancelOrder(driver, orderId)
+
+        const after = await readOrder(driver, orderId)
+        const remainingAssignments = (after?.drivers ?? []).filter((item: any) =>
+          DRIVER_STATES_OCCUPYING_SEATS.has(Number(item?.c_state)),
+        )
+        const terminalBooking = [3, 4].includes(Number(after.b_state))
+        if (!terminalBooking && remainingAssignments.length > 0)
+          throw new BackendError(
+            `заказ ${orderId} всё ещё занимает места: ` +
+            remainingAssignments.map((item: any) => `u${item.u_id}:state${item.c_state}`).join(',') +
+            ` (b_state=${after.b_state})`,
+            after,
+          )
+
+        cancelled += 1
+        cancelledInPass += 1
+        console.log(`E2E driver cleanup: driverId=${driver.userId} orderId=${orderId} released=true`)
+      } catch (error) {
+        skipped.add(orderId)
+        console.error(
+          `E2E DRIVER CLEANUP FAILED: driverId=${driver.userId} orderId=${orderId} — ` +
+          `${(error as Error)?.message ?? error}`,
+        )
+      }
+    }
+
+    // Если в первой странице нет тестовых назначений, повтор того же запроса
+    // не откроет следующие страницы: endpoint не поддерживает offset.
+    if (!cancelledInPass) {
+      const pageSummary = entries.map(([id, order]) => {
+        const assignments = (order?.drivers ?? []).map((item: any) =>
+          `u${item?.u_id}:state${item?.c_state}`).join(',')
+        return `${id}[test=${isTestOrder(order)},drivers=${assignments || 'none'}]`
+      })
+      console.warn(
+        `E2E driver cleanup: no cancellable test assignments for driverId=${driver.userId}; ` +
+        `API page=${pageSummary.join(';') || 'empty'}`,
+      )
+      break
+    }
+  }
+
+  return { cancelled, skipped: [...skipped] }
+}

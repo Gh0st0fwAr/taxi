@@ -20,7 +20,7 @@ import { withLayout } from '../../HOCs/withLayout'
 import { addHiddenOrder } from '../../tools/utils'
 import { useLiveEstimatedOrders } from '../../tools/liveOrderProfit'
 import { backendGateway } from '../../platform/adapters/LegacyBackendGateway'
-import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
+import { clearEmulatorClientChoseOtherDriver, getOfferEvent, getStoredDriverOffer, hasEmulatorClientChoseOtherDriver, isDriverOfferExpired, isOfferOrder, isVotingOrder, subscribeEmulatorClientChoseOtherDriver, updateStoredDriverOfferStatus } from '../../tools/driverOffer'
 import { orderControlModeSelectors } from '../../state/orderControlMode'
 import { EOrderControlMode } from '../../state/orderControlMode/constants'
 import OrderModeDecisionModal from '../../components/OrderModeDecisionModal'
@@ -115,6 +115,7 @@ const Driver: React.FC<IProps> = ({
     strictTakeTimers.current = []
   }, [])
   const [emulatorOrdersEnabled, setEmulatorOrdersEnabled] = useState(() => isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
+  const previousEmulatorMode = useRef(isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled())
 
   // Выгода заказа зависит от расстояния до точки «Откуда», а такси едет — значит
   // и выгода должна пересчитываться. Селекторы считают её от GPS браузера,
@@ -129,9 +130,18 @@ const Driver: React.FC<IProps> = ({
 
     const syncEmulatorMode = (event?: Event) => {
       const enabled = isAnyBrowserEmulatorModeRunning() || isExternalEmulatorEnabled()
+      const previousEnabled = previousEmulatorMode.current
+      previousEmulatorMode.current = enabled
       setEmulatorOrdersEnabled(enabled)
-      clearOrders()
-      closeAllModals()
+
+      // The effect also runs after navigation when callback dependencies change.
+      // Only reset the UI for an actual emulator-state event/transition; otherwise
+      // a successful action modal can be closed immediately after navigating back.
+      if (event || previousEnabled !== enabled) {
+        clearOrders()
+        closeAllModals()
+      }
+
       const payload = {
         source: 'driver-page',
         screen: 'Driver',
@@ -183,6 +193,30 @@ const Driver: React.FC<IProps> = ({
       if (shownVotingTimeoutNotifications.current[order.b_id])
         return
 
+      // The external emulator can inherit expired voting participations from a
+      // previous run. Their modal blocks real UI clicks for the current scenario.
+      // Keep production behavior unchanged; suppress this stale warning only in
+      // the explicit driverEmulator/extEmulator mode.
+      if (emulatorOrdersEnabled)
+        return
+
+      // Do not let an unrelated expired voting order cover controls for an
+      // order the driver is already performing. Defer the warning until the
+      // active trip ends; otherwise the modal blocks "Поехал"/"Приехал".
+      const hasAnotherActiveTrip = activeOrders.some(activeOrder =>
+        activeOrder.b_id !== order.b_id &&
+        activeOrder.drivers?.some(driver =>
+          driver.u_id === user.u_id &&
+          [
+            EBookingDriverState.Performer,
+            EBookingDriverState.Arrived,
+            EBookingDriverState.Started,
+          ].includes(driver.c_state),
+        ),
+      )
+      if (hasAnotherActiveTrip)
+        return
+
       shownVotingTimeoutNotifications.current[order.b_id] = true
       addHiddenOrder(order.b_id, user.u_id)
       closeAllModals()
@@ -216,7 +250,7 @@ const Driver: React.FC<IProps> = ({
 
     previousVotingParticipations.current = activeOrders
       .filter(order => isDriverVotingCandidate(order, user.u_id))
-  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals])
+  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals, emulatorOrdersEnabled])
 
   useEffect(() => {
     if (user?.u_role !== EUserRoles.Driver || !user.u_id || !activeOrders)
@@ -335,7 +369,21 @@ const Driver: React.FC<IProps> = ({
       if (!myDriver)
         continue
 
-      const event = getOfferEvent(order, user.u_id) || (
+      const explicitEvent = getOfferEvent(order, user.u_id)
+      const storedOffer = getStoredDriverOffer(order.b_id, user.u_id)
+
+      // In external-emulator mode the backend may return an already assigned
+      // legacy offer on initial load. Do not turn that existing state into a
+      // fresh "offer accepted" modal unless this browser has a current offer
+      // for the order; real event payloads are still handled normally.
+      if (
+        emulatorOrdersEnabled &&
+        !explicitEvent &&
+        (!storedOffer || isDriverOfferExpired(storedOffer))
+      )
+        continue
+
+      const event = explicitEvent || (
         myDriver.c_state === EBookingDriverState.Performer ? 'accepted' :
           myDriver.c_state === EBookingDriverState.Canceled ? 'rejected' :
             undefined
@@ -382,7 +430,7 @@ const Driver: React.FC<IProps> = ({
         })
       }
     }
-  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals])
+  }, [activeOrders, user?.u_id, user?.u_role, setMessageModal, closeAllModals, emulatorOrdersEnabled])
 
   // Реакция "клиент выбрал другого водителя", которую клиентский эмулятор симулирует
   // локально (голосование/предложение без реального второго водителя).

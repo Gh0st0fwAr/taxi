@@ -55,6 +55,7 @@ import {
   DRIVER_STATE,
   INTERCITY_LOCATION_CLASS,
   cancelOrder,
+  cancelTestDriverAssignments,
   cancelTestOrders,
   createOfferOrder,
   customerPriceOf,
@@ -197,6 +198,8 @@ test.beforeAll(async({ browser }) => {
   // Прогон начинается без тестового мусора: заказ, оставшийся от прерванного
   // прогона, занимает водителя и сбивает пассажирский экран.
   reportSweep('перед прогоном', await cancelTestOrders(passenger))
+  console.log('E2E driver sweep (перед прогоном, водитель 1):', await cancelTestDriverAssignments(driver1.session))
+  console.log('E2E driver sweep (перед прогоном, водитель 2):', await cancelTestDriverAssignments(driver2.session))
 
   passengerContext = await openSession(browser, PASSENGER_STORAGE)
   passengerPage = await passengerContext.newPage()
@@ -258,6 +261,8 @@ test.afterAll(async() => {
     return
   try {
     reportSweep('после прогона', await cancelTestOrders(passenger))
+    console.log('E2E driver sweep (после прогона, водитель 1):', await cancelTestDriverAssignments(driver1.session))
+    console.log('E2E driver sweep (после прогона, водитель 2):', await cancelTestDriverAssignments(driver2.session))
   } catch (error) {
     console.error(`E2E SWEEP FAILED: ${reason(error)}`)
   }
@@ -452,19 +457,14 @@ test('А.1.3 — предложение: от создания заказа до
   // Карта открывается переходом, а не вкладкой: исполнителем водитель стал уже
   // после отправки предложения и ЧУЖИМ действием — выбором пассажира, — поэтому
   // на карточке заказа основного действия карты ещё нет (как и у А.1.2).
-  await openDriverMap(driver1.page)
-
-  // Приложение сообщает водителю, что его предложение приняли, и пока это окно
-  // открыто, до карты не добраться — оно модальное. Это часть контракта А.1.3, а
-  // не помеха: у стандартного заказа и у голосования такого уведомления нет
-  // (pages/Driver/index.tsx, driver-offer-realtime-watch — окно показывается
-  // только для заказа, который приложение считает предложением). Поэтому оно же
-  // служит подтверждением со стороны водителя: его предложение приняли.
+  // Приложение сообщает водителю о принятии предложения реакцией на обновление
+  // activeOrders. Проверяем окно ДО перехода на карту: навигация сбрасывает
+  // локальное состояние модального окна и могла скрыть уже показанное уведомление.
   await confirmActionResult(
     driver1.page, 'success', 'водитель 1 уведомлён, что его предложение принято')
+  await openDriverMap(driver1.page)
 
-  await expectUiDriverState(
-    driver1.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
+  await expectUiDriverState(driver1.page, DRIVER_STATE.Performer, 'карта водителя показывает принятый заказ')
   await clickPrimaryAction(driver1.page)
   await expectBackendState(orderId, driver1, DRIVER_STATE.Arrived, 'бэкенд перевёл заказ в Arrived')
   await expectUiDriverState(driver1.page, DRIVER_STATE.Arrived, 'карта показывает прибытие')

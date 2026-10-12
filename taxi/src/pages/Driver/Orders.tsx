@@ -23,7 +23,7 @@ import { statuses } from '../../constants/miniOrders'
 import { TABS } from '../../components/passenger-order/tabs-switcher'
 import { EDriverTabs } from '.'
 import { addHiddenOrder } from '../../tools/utils'
-import { isAnyBrowserEmulatorOrder, isBrowserEmulatorRunning } from '../../tools/emulatorMode'
+import { isAnyBrowserEmulatorOrder, isBrowserEmulatorRunning, isExternalEmulatorEnabled } from '../../tools/emulatorMode'
 import { writeFlowEvent } from '../../tools/flowLog'
 import { writeRawLog } from '../../tools/rawLog'
 import { summarizeOrder } from '../../tools/frontendLog'
@@ -456,8 +456,13 @@ const DriverOrders: React.FC<IProps> = ({
       ) {
         shownVotingNotifications.current[previousOrder.b_id] = notificationKey
         const isTimeout = isVotingOrderExpired(previousOrder)
-        if (isTimeout)
+        if (isTimeout) {
           addHiddenOrder(previousOrder.b_id, user.u_id)
+          // Expired participations may survive between external-emulator runs.
+          // Do not let their warning overlay block the current scenario.
+          if (isExternalEmulatorEnabled())
+            continue
+        }
         closeAllModals()
         setMessageModal({
           isOpen: true,
@@ -488,6 +493,11 @@ const DriverOrders: React.FC<IProps> = ({
         currentDriver.c_state === EBookingDriverState.Considering &&
         isVotingOrderExpired(order)
       ) {
+        if (isExternalEmulatorEnabled()) {
+          addHiddenOrder(order.b_id, user.u_id)
+          continue
+        }
+
         const notificationKey = `${order.b_id}:timeout`
         if (shownVotingNotifications.current[order.b_id] !== notificationKey) {
           shownVotingNotifications.current[order.b_id] = notificationKey

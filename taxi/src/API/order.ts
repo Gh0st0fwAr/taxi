@@ -28,6 +28,7 @@ import { getUserCar } from './car'
 import {
   isAnyBrowserEmulatorOrder,
   isBrowserEmulatorRunning,
+  isExternalEmulatorEnabled,
   saveBrowserEmulatorOrderId,
 } from '../tools/emulatorMode'
 import { setPassengerConfirmedChoice } from '../tools/driverOffer'
@@ -317,7 +318,8 @@ export const getOrders: <TType extends EOrderTypes>(
   if (
     getConfiguredTestUserIds().length &&
     !isBrowserEmulatorRunning('drivers') &&
-    !isBrowserEmulatorRunning('clients')
+    !isBrowserEmulatorRunning('clients') &&
+    !isExternalEmulatorEnabled()
   )
     queryParams.push('filter=test_user_id')
 
@@ -349,6 +351,7 @@ export const getOrders: <TType extends EOrderTypes>(
         .filter((item: any) =>
           isBrowserEmulatorRunning('drivers') ||
           isBrowserEmulatorRunning('clients') ||
+          isExternalEmulatorEnabled() ||
           !isBackendTestOrder(item, response.data.user?.[item.u_id]),
         )
         .map((item: any) => convertOrder(item))
