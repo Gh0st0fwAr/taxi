@@ -16,8 +16,8 @@ export type WimiDemoOrder = WimiBookingDraft & {
 }
 
 export const MINIMUM_DURATION_MINUTES = 120
-export const BILLING_BLOCK_MINUTES = 10
-export const BASE_BLOCK_PRICE_CENTS = 250
+export const BILLING_BLOCK_MINUTES = 30
+export const BASE_BLOCK_PRICE_CENTS = 750
 export const MINIMUM_BASE_PRICE_CENTS = 3000
 const EARLIEST_START_MINUTES = 6 * 60
 const LATEST_START_MINUTES = 22 * 60
@@ -25,8 +25,8 @@ const LATEST_START_MINUTES = 22 * 60
 export function calculateBaseQuoteCents(durationMinutes: number): number {
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return 0
 
-  // The approved example is 129 minutes => 13 billed blocks (€32.50).
-  const billedBlocks = Math.ceil(durationMinutes / BILLING_BLOCK_MINUTES)
+  // Bill only completed 30-minute blocks; preserve €15/hour (€7.50 per block).
+  const billedBlocks = Math.floor(durationMinutes / BILLING_BLOCK_MINUTES)
   const blockTotal = billedBlocks * BASE_BLOCK_PRICE_CENTS
   return durationMinutes >= MINIMUM_DURATION_MINUTES
     ? Math.max(MINIMUM_BASE_PRICE_CENTS, blockTotal)
