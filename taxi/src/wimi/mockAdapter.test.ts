@@ -18,7 +18,7 @@ const draft: WimiBookingDraft = {
 describe('WIMI demo booking rules', () => {
   test('calculates base quote in integer cents and applies the minimum only to base time', () => {
     expect(calculateBaseQuoteCents(60)).toBe(1500)
-    expect(calculateBaseQuoteCents(90)).toBe(3000)
+    expect(calculateBaseQuoteCents(90)).toBe(2250)
     expect(calculateBaseQuoteCents(120)).toBe(3000)
     expect(calculateBaseQuoteCents(130)).toBe(3250)
     expect(calculateBaseQuoteCents(0)).toBe(0)
