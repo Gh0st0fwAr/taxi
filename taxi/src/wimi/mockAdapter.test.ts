@@ -23,16 +23,21 @@ const draft: WimiBookingDraft = {
 const fixedNow = new Date(2030, 4, 1, 9, 0, 0)
 
 describe('WIMI demo booking rules', () => {
-  test('calculates only completed 30-minute blocks in integer cents', () => {
+  test('rounds any started 10-minute block up in integer cents', () => {
+    expect(calculateBaseQuoteCents(10)).toBe(250)
+    expect(calculateBaseQuoteCents(11)).toBe(500)
     expect(calculateBaseQuoteCents(30)).toBe(750)
     expect(calculateBaseQuoteCents(60)).toBe(1500)
     expect(calculateBaseQuoteCents(90)).toBe(2250)
     expect(calculateBaseQuoteCents(120)).toBe(3000)
-    expect(calculateBaseQuoteCents(129)).toBe(3000)
-    expect(calculateBaseQuoteCents(130)).toBe(3000)
-    expect(calculateBaseQuoteCents(149)).toBe(3000)
+    expect(calculateBaseQuoteCents(121)).toBe(3250)
+    expect(calculateBaseQuoteCents(129)).toBe(3250)
+    expect(calculateBaseQuoteCents(130)).toBe(3250)
+    expect(calculateBaseQuoteCents(131)).toBe(3500)
+    expect(calculateBaseQuoteCents(149)).toBe(3750)
     expect(calculateBaseQuoteCents(150)).toBe(3750)
-    expect(calculateBaseQuoteCents(179)).toBe(3750)
+    expect(calculateBaseQuoteCents(151)).toBe(4000)
+    expect(calculateBaseQuoteCents(179)).toBe(4500)
     expect(calculateBaseQuoteCents(180)).toBe(4500)
     expect(calculateBaseQuoteCents(0)).toBe(0)
     expect(calculateBaseQuoteCents(-10)).toBe(0)
@@ -99,9 +104,12 @@ describe('WIMI demo booking rules', () => {
     expect(order.notes).toBe('')
   })
 
-  test('uses completed 30-minute blocks and rejects invalid drafts on create', () => {
-    expect(createDemoOrder({ ...draft, durationMinutes: 129 }, fixedNow).estimatedTotalCents).toBe(3000)
-    expect(createDemoOrder({ ...draft, durationMinutes: 130 }, fixedNow).estimatedTotalCents).toBe(3000)
+  test('rounds any started 10-minute block up and rejects invalid drafts on create', () => {
+    expect(createDemoOrder({ ...draft, durationMinutes: 121 }, fixedNow).estimatedTotalCents).toBe(3250)
+    expect(createDemoOrder({ ...draft, durationMinutes: 129 }, fixedNow).estimatedTotalCents).toBe(3250)
+    expect(createDemoOrder({ ...draft, durationMinutes: 130 }, fixedNow).estimatedTotalCents).toBe(3250)
+    expect(createDemoOrder({ ...draft, durationMinutes: 131 }, fixedNow).estimatedTotalCents).toBe(3500)
+    expect(createDemoOrder({ ...draft, durationMinutes: 149 }, fixedNow).estimatedTotalCents).toBe(3750)
     expect(createDemoOrder({ ...draft, durationMinutes: 150 }, fixedNow).estimatedTotalCents).toBe(3750)
     expect(() => createDemoOrder({ ...draft, address: ' ' }, fixedNow)).toThrow('Укажите адрес оказания услуги.')
   })
