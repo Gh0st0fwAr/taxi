@@ -668,7 +668,7 @@ const orderCreatedAtMs = (order: any): number | null => {
   if (!value)
     return null
 
-  const normalized = /^\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}$/.test(value)
+  const normalized = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(value)
     ? `${value.replace(' ', 'T')}Z`
     : value
   const timestamp = Date.parse(normalized)
