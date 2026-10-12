@@ -35,7 +35,7 @@ export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()):
   const startMinutes = parseTime(draft.startTime)
 
   if (!draft.address.trim()) errors.push('Укажите адрес оказания услуги.')
-  if (!draft.date || !/^\\d{4}-\\d{2}-\\d{2}$/.test(draft.date)) {
+  if (!draft.date || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) {
     errors.push('Укажите дату заказа.')
   } else {
     const date = new Date(`${draft.date}T00:00:00`)
@@ -79,7 +79,7 @@ export function createDemoOrder(draft: WimiBookingDraft, now = new Date()): Wimi
 }
 
 function parseTime(value: string): number | null {
-  const match = /^(\\d{2}):(\\d{2})$/.exec(value)
+  const match = /^(\d{2}):(\d{2})$/.exec(value)
   if (!match) return null
   const hours = Number(match[1])
   const minutes = Number(match[2])
