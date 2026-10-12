@@ -39,7 +39,7 @@ export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()):
     errors.push('Укажите дату заказа.')
   } else {
     const date = new Date(`${draft.date}T00:00:00`)
-    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== draft.date) {
+    if (Number.isNaN(date.getTime()) || localDateString(date) !== draft.date) {
       errors.push('Укажите корректную дату.')
     } else if (date < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
       errors.push('Дата заказа не может быть в прошлом.')
