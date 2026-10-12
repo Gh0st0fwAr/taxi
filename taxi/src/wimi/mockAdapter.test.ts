@@ -1,3 +1,9 @@
+// The production TypeScript build also type-checks files under src. Keep the
+// Jest globals locally typed because this repo does not install @types/jest.
+declare const describe: (name: string, fn: () => void) => void
+declare const test: (name: string, fn: () => void) => void
+declare const expect: (actual: unknown) => any
+
 import {
   calculateBaseQuoteCents,
   createDemoOrder,
