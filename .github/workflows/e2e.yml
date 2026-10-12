@@ -44,9 +44,25 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright E2E
-        # workers: 1 и retries: 1 приходят из playwright.config.ts по CI —
-        # флагами здесь не дублируются, чтобы источник правды был один.
+      - name: Run focused regression test
+        # Сначала проверяем последний исправленный путь: получение кода посадки
+        # и подтверждение заказа. Полный E2E запускается только при успехе этого шага.
+        run: npx playwright test e2e/driver-boarding.spec.ts --grep "A: правильный код"
+        env:
+          E2E_APP_URL: http://localhost:3000
+          E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
+          E2E_DRIVER_LOGIN: ${{ secrets.E2E_DRIVER_LOGIN }}
+          E2E_DRIVER_PASSWORD: ${{ secrets.E2E_DRIVER_PASSWORD }}
+          E2E_DRIVER_TYPE: ${{ secrets.E2E_DRIVER_TYPE }}
+          E2E_DRIVER2_LOGIN: ${{ secrets.E2E_DRIVER2_LOGIN }}
+          E2E_DRIVER2_PASSWORD: ${{ secrets.E2E_DRIVER2_PASSWORD }}
+          E2E_DRIVER2_TYPE: ${{ secrets.E2E_DRIVER2_TYPE }}
+          E2E_PASSENGER_LOGIN: ${{ secrets.E2E_PASSENGER_LOGIN }}
+          E2E_PASSENGER_PASSWORD: ${{ secrets.E2E_PASSENGER_PASSWORD }}
+          E2E_PASSENGER_TYPE: ${{ secrets.E2E_PASSENGER_TYPE }}
+
+      - name: Run full Playwright E2E
+        # GitHub Actions останавливает job здесь, если focused regression упал.
         run: npm run test:e2e
         env:
           # Приложение поднимает сам Playwright (webServer: npm start).
