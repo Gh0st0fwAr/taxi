@@ -9,7 +9,7 @@ prove that the backend contract is ready.
 - [WIMI-001 — Baseline and reuse map](WIMI-001-baseline.md)
 - [WIMI-002 — Two build modes](WIMI-002-build-modes.md)
 - [WIMI-003 — Backend readiness and integration blockers](WIMI-003-backend-readiness.md)
-- [WIMI-004 — Mock-first nanny booking UI](../../pull/3)
+- [WIMI-004 — Mock-first nanny booking UI](https://github.com/Gh0st0fwAr/taxi/pull/3)
 - [WIMI-005 — Booking flow hardening and regression tests](WIMI-005-booking-flow-hardening.md)
 
 ## Current scope
