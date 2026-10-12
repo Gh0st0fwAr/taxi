@@ -416,10 +416,14 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // Playwright fill sends the value through the input event instead of typing
-  // digits at a potentially stale caret position in the country-code mask.
-  // The mask is responsible for formatting the complete phone number.
-  await input.fill(digits)
+  // Поле контролируемое, с маской страны. Сначала сбрасываем номер профиля,
+  // затем читаем реальный префикс, который оставила маска, и вводим только
+  // недостающие цифры. Ввод полного номера поверх префикса сдвигает каретку
+  // и даёт другой номер; fill(digits) в этой маске не заменяет значение надёжно.
+  await input.fill('')
+  const shown = (await input.inputValue()).replace(/\D/g, '')
+  const rest = digits.startsWith(shown) ? digits.slice(shown.length) : digits
+  await input.pressSequentially(rest, { delay: 40 })
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
