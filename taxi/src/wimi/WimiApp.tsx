@@ -8,6 +8,7 @@ import {
   WimiDemoOrder,
 } from './mockAdapter'
 import { getNannyPricingQuote } from './nannyPricingApi'
+import { createNannyOrder, isWimiRealOrderCreationEnabled } from './nannyOrderApi'
 import WimiAddressPicker from './WimiAddressPicker'
 import type { WimiSelectedAddress } from './WimiAddressPicker'
 
@@ -32,6 +33,7 @@ const initialDraft = (): WimiBookingDraft => ({
 const WimiApp: React.FC = () => {
   const [draft, setDraft] = useState<WimiBookingDraft>(initialDraft)
   const [order, setOrder] = useState<WimiDemoOrder | null>(null)
+  const [realOrderId, setRealOrderId] = useState<string | null>(null)
   const [errors, setErrors] = useState<string[]>([])
   const [step, setStep] = useState<'details' | 'review' | 'created'>('details')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -39,9 +41,11 @@ const WimiApp: React.FC = () => {
   const [serverQuoteCents, setServerQuoteCents] = useState<number | null>(null)
   const submittingRef = useRef(false)
   const quoteRequestIdRef = useRef(0)
+  const createRequestKeyRef = useRef<string | null>(null)
   const navigate = useNavigate()
 
   const update = <K extends keyof WimiBookingDraft>(key: K, value: WimiBookingDraft[K]) => {
+    createRequestKeyRef.current = null
     if (key === 'address') {
       setDraft(current => ({
         ...current,
@@ -61,6 +65,7 @@ const WimiApp: React.FC = () => {
   }
 
   const selectAddressPoint = (point: WimiSelectedAddress) => {
+    createRequestKeyRef.current = null
     quoteRequestIdRef.current += 1
     setDraft(current => ({
       ...current,
@@ -104,7 +109,7 @@ const WimiApp: React.FC = () => {
     }
   }
 
-  const submitDemoOrder = () => {
+  const submitDemoOrder = async () => {
     // Guard synchronously: React state alone does not block two events before a render.
     if (step !== 'review' || submittingRef.current) return
     submittingRef.current = true
@@ -121,14 +126,36 @@ const WimiApp: React.FC = () => {
       }
 
       if (serverQuoteCents === null) throw new Error('Server quote is missing')
-      const created = createDemoOrder(draft, serverQuoteCents)
-      setOrder(created)
+      if (isWimiRealOrderCreationEnabled()) {
+        if (typeof draft.latitude !== 'number' || typeof draft.longitude !== 'number') {
+          throw new Error('Выберите адрес с подтверждёнными координатами.')
+        }
+        // Keep the same key after a timeout/error so a retry can recover the same server order.
+        const requestKey = createRequestKeyRef.current ?? crypto.randomUUID()
+        createRequestKeyRef.current = requestKey
+        const result = await createNannyOrder({
+          latitude: draft.latitude,
+          longitude: draft.longitude,
+          date: draft.date,
+          startTime: draft.startTime,
+          durationMinutes: draft.durationMinutes,
+          childrenCount: draft.childrenCount,
+        }, requestKey)
+        setRealOrderId(result.orderId)
+        setOrder(null)
+      } else {
+        setOrder(createDemoOrder(draft, serverQuoteCents))
+        setRealOrderId(null)
+      }
       setErrors([])
       setStep('created')
-      // Keep the guard locked until the user explicitly starts a new demo order.
-    } catch {
-      setErrors(['Не удалось создать демо-запись. Проверьте данные и попробуйте ещё раз.'])
-      setStep('details')
+      // Keep the guard locked until the user explicitly starts a new order.
+    } catch (error) {
+      setErrors([error instanceof Error
+        ? error.message
+        : 'Не удалось создать заявку. Проверьте соединение и попробуйте ещё раз.'])
+      // Keep the review data and idempotency key so the user can safely retry.
+      setStep('review')
       submittingRef.current = false
       setIsSubmitting(false)
     }
@@ -141,6 +168,8 @@ const WimiApp: React.FC = () => {
     setIsQuoting(false)
     setDraft(initialDraft())
     setOrder(null)
+    setRealOrderId(null)
+    createRequestKeyRef.current = null
     setServerQuoteCents(null)
     setErrors([])
     setStep('details')
@@ -159,39 +188,45 @@ const WimiApp: React.FC = () => {
 
       <main className="wimi-main">
         <div className="wimi-demo-notice" role="status">
-          <strong>Демонстрационный режим</strong>
-          <span>Реальный заказ не отправляется. Не вводите настоящие персональные данные.</span>
+          <strong>{isWimiRealOrderCreationEnabled() ? 'Режим создания заявок' : 'Демонстрационный режим'}</strong>
+          <span>{isWimiRealOrderCreationEnabled()
+            ? 'Заявка будет отправлена на сервер после проверки данных.'
+            : 'Реальный заказ не отправляется. Не вводите настоящие персональные данные.'}</span>
         </div>
 
-        {step === 'created' && order ? (
+        {step === 'created' && (order || realOrderId) ? (
           <section className="wimi-card wimi-result" aria-labelledby="created-title">
             <div className="wimi-success-icon" aria-hidden="true">✓</div>
-            <p className="wimi-eyebrow">ДЕМО-ЗАКАЗ СОЗДАН ЛОКАЛЬНО</p>
-            <h1 id="created-title">Проверка сценария завершена</h1>
-            <p className="wimi-muted">Это тестовая запись только в памяти открытой страницы. Реальная заявка не отправлена, няня не назначена, уведомления не отправлены.</p>
-            <div className="wimi-order-id">{order.id}</div>
+            <p className="wimi-eyebrow">{realOrderId ? 'ЗАЯВКА СОЗДАНА НА СЕРВЕРЕ' : 'ДЕМО-ЗАКАЗ СОЗДАН ЛОКАЛЬНО'}</p>
+            <h1 id="created-title">{realOrderId ? 'Заявка создана' : 'Проверка сценария завершена'}</h1>
+            <p className="wimi-muted">{realOrderId
+              ? 'Сервер подтвердил создание заявки. Назначение няни и дальнейшие уведомления этим действием не подтверждаются.'
+              : 'Это тестовая запись только в памяти открытой страницы. Реальная заявка не отправлена, няня не назначена, уведомления не отправлены.'}</p>
+            <div className="wimi-order-id">{realOrderId ?? order?.id}</div>
             <div className="wimi-summary">
-              <SummaryRow label="Адрес" value={order.address} />
-              {typeof order.latitude === 'number' && typeof order.longitude === 'number' && (
-                <SummaryRow label="Координаты" value={`${order.latitude.toFixed(5)}, ${order.longitude.toFixed(5)}`} />
+              <SummaryRow label="Адрес" value={order?.address ?? draft.address} />
+              {typeof (order?.latitude ?? draft.latitude) === 'number' && typeof (order?.longitude ?? draft.longitude) === 'number' && (
+                <SummaryRow label="Координаты" value={`${(order?.latitude ?? draft.latitude)!.toFixed(5)}, ${(order?.longitude ?? draft.longitude)!.toFixed(5)}`} />
               )}
-              <SummaryRow label="Дата" value={order.date} />
-              <SummaryRow label="Начало" value={order.startTime} />
-              <SummaryRow label="Длительность" value={`${order.durationMinutes} минут`} />
-              <SummaryRow label="Дети" value={String(order.childrenCount)} />
-              <SummaryRow label="Возраст" value={order.childrenAges || 'Не указан'} />
-              <SummaryRow label="Комментарий" value={order.notes || 'Нет'} />
-              <SummaryRow label="Предварительная цена сервера" value={money(order.estimatedTotalCents)} />
+              <SummaryRow label="Дата" value={order?.date ?? draft.date} />
+              <SummaryRow label="Начало" value={order?.startTime ?? draft.startTime} />
+              <SummaryRow label="Длительность" value={`${order?.durationMinutes ?? draft.durationMinutes} минут`} />
+              <SummaryRow label="Дети" value={String(order?.childrenCount ?? draft.childrenCount)} />
+              <SummaryRow label="Возраст" value={order?.childrenAges ?? draft.childrenAges || 'Не указан'} />
+              <SummaryRow label="Комментарий" value={order?.notes ?? draft.notes || 'Нет'} />
+              <SummaryRow label="Предварительная цена сервера" value={money(order?.estimatedTotalCents ?? serverQuoteCents ?? 0)} />
             </div>
-            <p className="wimi-disclaimer">Предварительная сумма получена с сервера. Это всё ещё демо-запись: реальный заказ не создан, а окончательная цена зависит от фактического времени. Данные не сохраняются после обновления или закрытия страницы.</p>
-            <button type="button" className="wimi-button wimi-button-primary wimi-full" onClick={reset}>Создать ещё один демо-заказ</button>
+            <p className="wimi-disclaimer">{realOrderId
+              ? 'Показана предварительная цена из серверного quote. Окончательная сумма определяется сервером по фактическим данным.'
+              : 'Предварительная сумма получена с сервера. Это всё ещё демо-запись: реальный заказ не создан, а окончательная цена зависит от фактического времени. Данные не сохраняются после обновления или закрытия страницы.'}</p>
+            <button type="button" className="wimi-button wimi-button-primary wimi-full" onClick={reset}>{realOrderId ? 'Создать новую заявку' : 'Создать ещё один демо-заказ'}</button>
           </section>
         ) : (
           <>
             <section className="wimi-intro">
               <p className="wimi-eyebrow">WIMI KIDS · СЕРВИС ВЫЗОВА НЯНЬ</p>
               <h1>{step === 'review' ? 'Проверьте детали заказа' : 'Найдём время для заботы'}</h1>
-              <p className="wimi-muted">{step === 'review' ? 'Перед созданием демо-заказа проверьте адрес, время и предварительную сумму.' : 'Укажите основные детали — перед проверкой веб-версия запросит цену у сервера.'}</p>
+              <p className="wimi-muted">{step === 'review' ? 'Перед отправкой проверьте адрес, время и предварительную сумму.' : 'Укажите основные детали — перед проверкой веб-версия запросит цену у сервера.'}</p>
             </section>
 
             <div className="wimi-steps" aria-label="Этапы заказа">
@@ -279,16 +314,16 @@ const WimiApp: React.FC = () => {
                   <SummaryRow label="Комментарий" value={draft.notes || 'Нет'} />
                   <SummaryRow label="Предварительная цена сервера" value={serverQuoteCents === null ? 'Не получена' : money(serverQuoteCents)} />
                 </div>
-                <p className="wimi-disclaimer">Цена получена через nanny_pricing. Создание заказа пока остаётся демо: для реального create нужно подтвердить координаты адреса и точное соответствие полей backend DTO.</p>
+                <p className="wimi-disclaimer">Цена получена через nanny_pricing. Реальное создание по умолчанию выключено до подтверждения корректного серверного расчёта длительности и проверки staging.</p>
                 <div className="wimi-actions">
                   <button type="button" className="wimi-button wimi-button-secondary" onClick={() => { setErrors([]); setStep('details') }}>Назад к данным</button>
-                  <button type="button" className="wimi-button wimi-button-primary" onClick={submitDemoOrder} disabled={isSubmitting}>{isSubmitting ? 'Создаём…' : 'Создать демо-заказ'}</button>
+                  <button type="button" className="wimi-button wimi-button-primary" onClick={submitDemoOrder} disabled={isSubmitting}>{isSubmitting ? 'Создаём…' : (isWimiRealOrderCreationEnabled() ? 'Создать заявку' : 'Создать демо-заказ')}</button>
                 </div>
               </section>
             )}
           </>
         )}
-        <footer className="wimi-footer">WIMI KIDS · Прототип пользовательского сценария · Реальные заказы отключены</footer>
+        <footer className="wimi-footer">{isWimiRealOrderCreationEnabled() ? 'WIMI KIDS · Серверное создание включено для контролируемого теста' : 'WIMI KIDS · Прототип пользовательского сценария · Реальные заказы отключены'}</footer>
       </main>
     </div>
   )
