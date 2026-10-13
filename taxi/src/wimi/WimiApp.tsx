@@ -1,4 +1,4 @@
-import React, { FormEvent, useMemo, useState } from 'react'
+import React, { FormEvent, useMemo, useRef, useState } from 'react'
 import { Link, Route, Routes, useNavigate } from 'react-router-dom'
 import {
   calculateBaseQuoteCents,
@@ -32,6 +32,8 @@ const WimiApp: React.FC = () => {
   const [order, setOrder] = useState<WimiDemoOrder | null>(null)
   const [errors, setErrors] = useState<string[]>([])
   const [step, setStep] = useState<'details' | 'review' | 'created'>('details')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submittingRef = useRef(false)
   const navigate = useNavigate()
 
   const quoteCents = useMemo(() => calculateBaseQuoteCents(draft.durationMinutes), [draft.durationMinutes])
@@ -41,24 +43,44 @@ const WimiApp: React.FC = () => {
 
   const review = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (step !== 'details') return
     const nextErrors = validateBookingDraft(draft)
     setErrors(nextErrors)
     if (nextErrors.length === 0) setStep('review')
   }
 
   const submitDemoOrder = () => {
+    // Guard synchronously: React state alone does not block two events before a render.
+    if (step !== 'review' || submittingRef.current) return
+    submittingRef.current = true
+    setIsSubmitting(true)
+
     try {
+      const nextErrors = validateBookingDraft(draft)
+      if (nextErrors.length > 0) {
+        setErrors(nextErrors)
+        setStep('details')
+        submittingRef.current = false
+        setIsSubmitting(false)
+        return
+      }
+
       const created = createDemoOrder(draft)
       setOrder(created)
       setErrors([])
       setStep('created')
-    } catch (error) {
-      setErrors([error instanceof Error ? error.message : 'Не удалось проверить данные заказа.'])
+      // Keep the guard locked until the user explicitly starts a new demo order.
+    } catch {
+      setErrors(['Не удалось создать демо-запись. Проверьте данные и попробуйте ещё раз.'])
       setStep('details')
+      submittingRef.current = false
+      setIsSubmitting(false)
     }
   }
 
   const reset = () => {
+    submittingRef.current = false
+    setIsSubmitting(false)
     setDraft(initialDraft())
     setOrder(null)
     setErrors([])
@@ -87,7 +109,7 @@ const WimiApp: React.FC = () => {
             <div className="wimi-success-icon" aria-hidden="true">✓</div>
             <p className="wimi-eyebrow">ДЕМО-ЗАКАЗ СОЗДАН ЛОКАЛЬНО</p>
             <h1 id="created-title">Проверка сценария завершена</h1>
-            <p className="wimi-muted">Это тестовая запись в памяти страницы. Няня не назначена, уведомления не отправлены.</p>
+            <p className="wimi-muted">Это тестовая запись только в памяти открытой страницы. Реальная заявка не отправлена, няня не назначена, уведомления не отправлены.</p>
             <div className="wimi-order-id">{order.id}</div>
             <div className="wimi-summary">
               <SummaryRow label="Адрес" value={order.address} />
@@ -95,10 +117,12 @@ const WimiApp: React.FC = () => {
               <SummaryRow label="Начало" value={order.startTime} />
               <SummaryRow label="Длительность" value={`${order.durationMinutes} минут`} />
               <SummaryRow label="Дети" value={String(order.childrenCount)} />
+              <SummaryRow label="Возраст" value={order.childrenAges || 'Не указан'} />
+              <SummaryRow label="Комментарий" value={order.notes || 'Нет'} />
               <SummaryRow label="Расчётная базовая сумма" value={money(order.estimatedTotalCents)} />
             </div>
-            <p className="wimi-disclaimer">Итоговая сумма рассчитывается сервером в рабочей версии. Эта сумма — только демонстрационный предварительный расчёт.</p>
-            <button className="wimi-button wimi-button-primary wimi-full" onClick={reset}>Создать ещё один демо-заказ</button>
+            <p className="wimi-disclaimer">Итоговая сумма рассчитывается сервером в рабочей версии. Эта сумма — только демонстрационный предварительный расчёт. Данные не сохраняются после обновления или закрытия страницы.</p>
+            <button type="button" className="wimi-button wimi-button-primary wimi-full" onClick={reset}>Создать ещё один демо-заказ</button>
           </section>
         ) : (
           <>
@@ -115,9 +139,9 @@ const WimiApp: React.FC = () => {
             </div>
 
             {errors.length > 0 && (
-              <div className="wimi-errors" role="alert">
+              <div className="wimi-errors" role="alert" aria-live="assertive">
                 <strong>Проверьте данные:</strong>
-                <ul>{errors.map(error => <li key={error}>{error}</li>)}</ul>
+                <ul>{errors.map((error, index) => <li key={`${index}-${error}`}>{error}</li>)}</ul>
               </div>
             )}
 
@@ -136,13 +160,14 @@ const WimiApp: React.FC = () => {
                   <div className="wimi-field">
                     <label htmlFor="wimi-time">Время начала <span>*</span></label>
                     <input id="wimi-time" type="time" min="06:00" max="22:00" value={draft.startTime} onChange={event => update('startTime', event.target.value)} required />
-                    <small>Заказы принимаются с 06:00 до 22:00.</small>
+                    <small>Заказы принимаются с 06:00 до 22:00. Начало в 22:00 не подходит для минимального заказа.</small>
                   </div>
                 </div>
+                <p className="wimi-field-hint">Проверка использует локальные часы браузера. Часовой пояс адреса и переходы на летнее время сервером пока не проверяются.</p>
                 <div className="wimi-field">
                   <label htmlFor="wimi-duration">Длительность, минут <span>*</span></label>
-                  <input id="wimi-duration" type="number" min={MINIMUM_DURATION_MINUTES} max="1080" step="10" value={draft.durationMinutes} onChange={event => update('durationMinutes', Number(event.target.value))} required />
-                  <small>Минимум 120 минут. В 00:00 активный заказ автоматически закрывается.</small>
+                  <input id="wimi-duration" type="number" min={MINIMUM_DURATION_MINUTES} max="1080" step="1" value={draft.durationMinutes} onChange={event => update('durationMinutes', event.target.value === '' ? Number.NaN : Number(event.target.value))} required />
+                  <small>Минимум 120 минут. Заказ должен завершиться не позднее 00:00.</small>
                 </div>
 
                 <div className="wimi-card-heading wimi-section-divider"><span className="wimi-heading-icon" aria-hidden="true">♡</span><div><h2>О детях</h2><p>Не указывайте имена и другие лишние персональные данные.</p></div></div>
@@ -164,15 +189,15 @@ const WimiApp: React.FC = () => {
                 </div>
 
                 <div className="wimi-price-preview">
-                  <div><span>Предварительная базовая стоимость</span><small>Минимум €30; доплаты за дополнительные услуги не включены</small></div>
+                  <div><span>Предварительная базовая стоимость</span><small>€2,50 за каждый начатый 10-минутный блок; неполный блок округляется вверх. Минимум €30; доплаты за дополнительные услуги не включены.</small></div>
                   <strong>{money(quoteCents)}</strong>
                 </div>
                 <p className="wimi-disclaimer">Расчёт демонстрационный. В рабочем сервисе тариф и итоговую сумму подтверждает сервер. Оплата — наличными няне вне сервиса.</p>
                 <button type="submit" className="wimi-button wimi-button-primary wimi-full">Проверить заказ <span aria-hidden="true">→</span></button>
               </form>
             ) : (
-              <section className="wimi-card">
-                <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">✓</span><div><h2>Детали демо-заказа</h2><p>Сверьте информацию перед локальным созданием тестовой записи.</p></div></div>
+              <section className="wimi-card" aria-labelledby="wimi-review-title">
+                <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">✓</span><div><h2 id="wimi-review-title">Детали демо-заказа</h2><p>Сверьте информацию перед локальным созданием тестовой записи.</p></div></div>
                 <div className="wimi-summary">
                   <SummaryRow label="Адрес" value={draft.address} />
                   <SummaryRow label="Дата" value={draft.date} />
@@ -185,8 +210,8 @@ const WimiApp: React.FC = () => {
                 </div>
                 <p className="wimi-disclaimer">Создание не вызывает API и не назначает няню. Демо-заказ хранится только в состоянии открытой страницы.</p>
                 <div className="wimi-actions">
-                  <button type="button" className="wimi-button wimi-button-secondary" onClick={() => setStep('details')}>Назад к данным</button>
-                  <button type="button" className="wimi-button wimi-button-primary" onClick={submitDemoOrder}>Создать демо-заказ</button>
+                  <button type="button" className="wimi-button wimi-button-secondary" onClick={() => { setErrors([]); setStep('details') }}>Назад к данным</button>
+                  <button type="button" className="wimi-button wimi-button-primary" onClick={submitDemoOrder} disabled={isSubmitting}>{isSubmitting ? 'Создаём…' : 'Создать демо-заказ'}</button>
                 </div>
               </section>
             )}
