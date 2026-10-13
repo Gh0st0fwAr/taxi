@@ -60,8 +60,11 @@ const WimiApp: React.FC = () => {
       setServerQuoteCents(quotedCents)
       setErrors([])
       setStep('review')
-    } catch {
-      setErrors(['Не удалось получить цену с сервера. Заказ не создан. Проверьте соединение и попробуйте ещё раз.'])
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      setErrors([message.includes('Unauthorized')
+        ? 'Для запроса цены войдите в аккаунт WIMI KIDS на этой платформе.'
+        : 'Не удалось получить цену с сервера. Заказ не создан. Проверьте соединение и попробуйте ещё раз.'])
     } finally {
       setIsQuoting(false)
     }
