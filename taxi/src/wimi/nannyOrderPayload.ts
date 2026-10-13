@@ -45,6 +45,8 @@ export function buildNannyCreatePayload(draft: WimiCreateOrderDraft, requestKey:
     action: 'create',
     request_key: requestKey,
     time_zone: 'Europe/Madrid',
+    // Customer-planned duration only. Minimum duration remains server policy.
+    duration_min: draft.durationMinutes,
     order: {
       b_start_latitude: String(draft.latitude),
       b_start_longitude: String(draft.longitude),
