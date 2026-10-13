@@ -139,7 +139,7 @@ const WimiApp: React.FC = () => {
               <SummaryRow label="Дети" value={String(order.childrenCount)} />
               <SummaryRow label="Возраст" value={order.childrenAges || 'Не указан'} />
               <SummaryRow label="Комментарий" value={order.notes || 'Нет'} />
-              <SummaryRow label="Расчётная базовая сумма" value={money(order.estimatedTotalCents)} />
+              <SummaryRow label="Предварительная цена сервера" value={money(order.estimatedTotalCents)} />
             </div>
             <p className="wimi-disclaimer">Предварительная сумма получена с сервера. Это всё ещё демо-запись: реальный заказ не создан, а окончательная цена зависит от фактического времени. Данные не сохраняются после обновления или закрытия страницы.</p>
             <button type="button" className="wimi-button wimi-button-primary wimi-full" onClick={reset}>Создать ещё один демо-заказ</button>
@@ -212,7 +212,7 @@ const WimiApp: React.FC = () => {
                   <div><span>Цена сервера</span><small>Получим при проверке заказа. Клиентская версия не рассчитывает тариф самостоятельно.</small></div>
                   <strong>После проверки</strong>
                 </div>
-                <p className="wimi-disclaimer">Расчёт демонстрационный. В рабочем сервисе тариф и итоговую сумму подтверждает сервер. Оплата — наличными няне вне сервиса.</p>
+                <p className="wimi-disclaimer">Предварительная цена получена сервером. Создание остаётся демонстрационным; окончательная сумма определяется сервером по фактическому времени. Оплата — наличными няне вне сервиса.</p>
                 <button type="submit" className="wimi-button wimi-button-primary wimi-full" disabled={isQuoting}>{isQuoting ? 'Запрашиваем цену…' : 'Проверить заказ'} <span aria-hidden="true">→</span></button>
               </form>
             ) : (
