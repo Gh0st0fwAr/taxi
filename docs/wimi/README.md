@@ -27,8 +27,10 @@ prove that the backend contract is ready.
   not implement the backend.
 - WIMI-003 remains the integration-readiness audit and release-blocker list.
   WIMI-006 defines the backend contract and safe gateway requirements.
-- WIMI-007 records the address/coordinate integration gap: the WIMI form has
-  only free-text address input; no verified geocoding contract is wired in.
+- WIMI-007 adds a WIMI address picker that reuses Taxi's existing address
+  suggestions, geocoding, reverse-geocoding, and map tile configuration. Manual
+  address edits invalidate selected coordinates and pending price quotes. Real
+  order creation remains disabled; backend DTO mapping is still a separate gate.
 - Production integration must not be enabled until its blockers are resolved.
 
 ## Historical foundation verification
