@@ -416,15 +416,13 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // InputMask keeps the +233 prefix and may restore the controlled profile
-  // value when Control+A/Backspace targets the whole masked string. Move to the
-  // end, clear the nine editable national-number slots, then type only those
-  // digits. This mirrors editing the field without trying to delete the prefix.
+  // InputMask does not reliably handle Playwright fill() on this fixed-prefix
+  // mask: it shifts digits into the prefix slots. Type into the editable slots
+  // as a user would, leaving the fixed +233 prefix untouched.
   const nationalDigits = digits.startsWith('233') ? digits.slice(3) : digits
   await input.click()
-  await input.press('End')
-  for (let index = 0; index < 9; index += 1)
-    await input.press('Backspace')
+  await input.press('Control+A')
+  await input.press('Backspace')
   await input.pressSequentially(nationalDigits, { delay: 40 })
 
   await expect
