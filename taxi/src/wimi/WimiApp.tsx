@@ -40,7 +40,7 @@ const WimiApp: React.FC = () => {
 
   const update = <K extends keyof WimiBookingDraft>(key: K, value: WimiBookingDraft[K]) => {
     setDraft(current => ({ ...current, [key]: value }))
-    if (key === 'date' || key === 'startTime') setServerQuoteCents(null)
+    if (key === 'date' || key === 'startTime' || key === 'durationMinutes') setServerQuoteCents(null)
   }
 
   const review = async (event: FormEvent<HTMLFormElement>) => {
@@ -52,7 +52,7 @@ const WimiApp: React.FC = () => {
 
     setIsQuoting(true)
     try {
-      const quote = await getNannyPricingQuote(draft.date, draft.startTime)
+      const quote = await getNannyPricingQuote(draft.date, draft.startTime, draft.durationMinutes)
       const quotedCents = Math.round(Number(quote.price) * 100)
       if (!Number.isSafeInteger(quotedCents) || quotedCents < 0) {
         throw new Error('Invalid server quote')
