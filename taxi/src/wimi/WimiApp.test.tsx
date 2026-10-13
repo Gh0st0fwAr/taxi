@@ -4,6 +4,11 @@ declare const test: (name: string, fn: () => void) => void
 declare const expect: (actual: unknown) => any
 declare const beforeEach: (fn: () => void) => void
 declare const afterEach: (fn: () => void) => void
+declare const jest: { mock: (name: string, factory: () => unknown) => void }
+
+jest.mock('./nannyPricingApi', () => ({
+  getNannyPricingQuote: () => Promise.resolve({ formula: 'base_price', price: '30', options: {}, calculationType: 'incomplete' }),
+}))
 
 import React, { act } from 'react'
 import { createRoot, Root } from 'react-dom/client'
@@ -13,10 +18,14 @@ import WimiRoot from './WimiApp'
 let container: HTMLDivElement
 let root: Root
 
-function clickButton(label: string): void {
+async function clickButton(label: string): Promise<void> {
   const button = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes(label))
   if (!button) throw new Error(`Button not found: ${label}`)
-  act(() => button.click())
+  await act(async () => {
+    button.click()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
 }
 
 function changeValue(selector: string, value: string): void {
@@ -49,31 +58,29 @@ describe('WIMI booking UI', () => {
     container.remove()
   })
 
-  test('keeps an invalid draft on the form and exposes an accessible error', () => {
-    clickButton('Проверить заказ')
+  test('keeps an invalid draft on the form and exposes an accessible error', async () => {
+    await clickButton('Проверить заказ')
     expect(container.querySelector('[role="alert"]')).not.toBeNull()
     expect(container.querySelector('h1')?.textContent).toBe('Найдём время для заботы')
     expect(container.querySelector<HTMLLabelElement>('label[for="wimi-address"]')?.htmlFor).toBe('wimi-address')
   })
 
-  test('preserves edited values when returning from review and recalculates the quote', () => {
+  test('gets the quote from the server and preserves edited values on back-navigation', async () => {
     changeValue('#wimi-address', 'Демо-адрес, 1')
     changeValue('#wimi-duration', '121')
-    expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('32,50')
+    expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('После проверки')
     changeValue('#wimi-duration', '130')
-    expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('32,50')
     changeValue('#wimi-duration', '131')
-    expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('35,00')
     clickButton('Проверить заказ')
     expect(container.querySelector('h1')?.textContent).toBe('Проверьте детали заказа')
     expect(container.textContent).toContain('Демо-адрес, 1')
-    expect(container.textContent).toContain('35,00')
+    expect(container.textContent).toContain('30,00')
     clickButton('Назад к данным')
     expect(container.querySelector<HTMLInputElement>('#wimi-address')?.value).toBe('Демо-адрес, 1')
     expect(container.querySelector<HTMLInputElement>('#wimi-duration')?.value).toBe('131')
   })
 
-  test('creates one in-memory result for rapid repeated confirmation and can reset', () => {
+  test('creates one in-memory demo result from the server quote and can reset', async () => {
     changeValue('#wimi-address', 'Демо-адрес, 2')
     clickButton('Проверить заказ')
     act(() => {
@@ -91,7 +98,7 @@ describe('WIMI booking UI', () => {
     expect(container.textContent).toContain('Демонстрационный режим')
   })
 
-  test('shows the latest edited data after rechecking the draft', () => {
+  test('shows the latest edited data after rechecking the draft', async () => {
     changeValue('#wimi-address', 'Первый адрес')
     clickButton('Проверить заказ')
     clickButton('Назад к данным')
