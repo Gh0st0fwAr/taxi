@@ -279,7 +279,7 @@ const WimiApp: React.FC = () => {
                 <div className="wimi-field">
                   <label htmlFor="wimi-duration">Длительность, минут <span>*</span></label>
                   <input id="wimi-duration" type="number" min="1" max="1080" step="1" value={draft.durationMinutes} onChange={event => update('durationMinutes', event.target.value === '' ? Number.NaN : Number(event.target.value))} required />
-                  <small>Минимум 120 минут. Заказ должен завершиться не позднее 00:00.</small>
+                  <small>Минимальную длительность проверит сервер. Заказ должен завершиться не позднее 00:00.</small>
                 </div>
 
                 <div className="wimi-card-heading wimi-section-divider"><span className="wimi-heading-icon" aria-hidden="true">♡</span><div><h2>О детях</h2><p>Не указывайте имена и другие лишние персональные данные.</p></div></div>
