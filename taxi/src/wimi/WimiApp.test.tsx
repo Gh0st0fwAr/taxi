@@ -11,10 +11,17 @@ jest.mock('./nannyPricingApi', () => ({
 }))
 
 jest.mock('../API', () => ({
-  getPointSuggestions: (query: string) => Promise.resolve([{
-    type: 2,
-    point: { address: query, shortAddress: query, latitude: 5.55602, longitude: -0.1969 },
-  }]),
+  getPointSuggestions: (query: string) => {
+    if (query === 'Сбой адреса')
+      return Promise.reject(new Error('suggestions unavailable'))
+    const result = [{
+      type: 2,
+      point: { address: query, shortAddress: query, latitude: 5.55602, longitude: -0.1969 },
+    }]
+    return query === 'Медленный адрес' ?
+      new Promise(resolve => setTimeout(() => resolve(result), 300)) :
+      Promise.resolve(result)
+  },
   geocode: (query: string) => Promise.resolve({
     display_name: query,
     lat: '5.55602',
@@ -95,6 +102,28 @@ describe('WIMI booking UI', () => {
     expect(container.querySelector<HTMLLabelElement>('label[for="wimi-address"]')?.htmlFor).toBe('wimi-address')
   })
 
+
+  test('shows a recoverable message when address suggestions fail', async () => {
+    changeValue('#wimi-address', 'Сбой адреса')
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400))
+    })
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Не удалось загрузить подсказки')
+    expect(container.querySelector<HTMLInputElement>('#wimi-address')?.value).toBe('Сбой адреса')
+  })
+
+  test('does not display a late response for an older address query', async () => {
+    changeValue('#wimi-address', 'Медленный адрес')
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400))
+    })
+    changeValue('#wimi-address', 'Новый адрес')
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400))
+    })
+    expect(container.querySelector('.wimi-address-suggestions')?.textContent).toContain('Новый адрес')
+    expect(container.querySelector('.wimi-address-suggestions')?.textContent).not.toContain('Медленный адрес')
+  })
 
   test('requires a coordinate-backed address and clears coordinates when the text is edited', async () => {
     await selectAddress('Подтверждённый адрес')
