@@ -37,11 +37,12 @@ function madridOffsetForLocalDateTime(date: string, time: string): string {
   return `${date} ${time}:00${sign}${hh}:${mm}`
 }
 
-export function buildNannyQuotePayload(date: string, startTime: string) {
+export function buildNannyQuotePayload(date: string, startTime: string, durationMinutes: number) {
   return {
     action: 'quote',
     when: madridOffsetForLocalDateTime(date, startTime),
     time_zone: 'Europe/Madrid',
+    duration_min: durationMinutes,
     options: [] as number[],
   }
 }
