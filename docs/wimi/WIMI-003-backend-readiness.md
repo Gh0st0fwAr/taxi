@@ -54,13 +54,12 @@ Server-side rules to enforce:
 - nanny working window: 06:00–24:00;
 - new orders accepted until 22:00;
 - at 00:00, auto-close the order, stop accrual and issue the receipt;
-- bill only complete 10-minute blocks;
-- €2.50 per block (€15/hour);
+- bill each started 10-minute block in full, rounding duration up to the next 10-minute boundary;
+- €2.50 per billed block (€15/hour);
 - minimum duration 120 minutes, minimum amount €30;
 - store the final amount and an auditable billing breakdown.
 
-Required boundary cases include 120 minutes = €30, 130 minutes = €32.50
-before extras, and partial 10-minute blocks not billed.
+Required boundary cases before extras: 120 minutes = €30 minimum; 121 and 129 minutes round up to 130 billed minutes = €32.50; 130 minutes = €32.50; 131 minutes rounds up to 140 billed minutes = €35; 149 and 150 minutes round up/remain at 150 billed minutes = €37.50; 151 minutes rounds up to 160 billed minutes = €40; 179 and 180 minutes bill as 180 minutes = €45. Any started 10-minute block is charged in full.
 
 ### B5 — Timezone and DST
 - Use the IANA timezone for the service location.
@@ -91,7 +90,7 @@ Before finalizing frontend DTOs, verify:
 4. Same key with changed payload conflicts.
 5. Concurrent create requests create one order.
 6. Distinguish failure before create from failure after successful create.
-7. Billing: minimum, exact 10-minute blocks and partial blocks.
+7. Billing: minimum, round-up of every started 10-minute block and boundary cases.
 8. Midnight auto-close stops accrual and issues receipt.
 9. Acceptance cutoff at 22:00.
 10. Europe/Madrid DST transitions.
