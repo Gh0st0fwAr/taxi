@@ -7,7 +7,7 @@ declare const afterEach: (fn: () => void) => void
 declare const jest: { mock: (name: string, factory: () => unknown) => void }
 
 jest.mock('./nannyPricingApi', () => ({
-  getNannyPricingQuote: () => Promise.resolve({ formula: 'base_price', price: '30', options: {}, calculationType: 'incomplete' }),
+  getNannyPricingQuote: () => Promise.resolve({ formula: 'base_price', price: '30', options: {}, calculationType: 'complete' }),
 }))
 
 import React, { act } from 'react'
