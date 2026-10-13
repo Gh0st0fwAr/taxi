@@ -10,6 +10,11 @@ jest.mock('./nannyPricingApi', () => ({
   getNannyPricingQuote: () => Promise.resolve({ formula: 'base_price', price: '30', options: {}, calculationType: 'complete' }),
 }))
 
+jest.mock('./nannyOrderApi', () => ({
+  createNannyOrder: () => Promise.resolve({ orderId: '4200', duplicate: false, pricingModel: { price: '30', calculationType: 'complete' } }),
+  isWimiRealOrderCreationEnabled: () => process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE === 'true',
+}))
+
 jest.mock('../API', () => ({
   getPointSuggestions: (query: string) => {
     if (query === 'Сбой адреса')
@@ -58,6 +63,7 @@ import WimiRoot from './WimiApp'
 
 let container: HTMLDivElement
 let root: Root
+const originalRealCreateFlag = process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE
 
 async function clickButton(label: string): Promise<void> {
   const button = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes(label))
@@ -111,6 +117,8 @@ describe('WIMI booking UI', () => {
   afterEach(() => {
     act(() => root.unmount())
     container.remove()
+    if (originalRealCreateFlag === undefined) delete process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE
+    else process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE = originalRealCreateFlag
   })
 
   test('keeps an invalid draft on the form and exposes an accessible error', async () => {
@@ -165,6 +173,17 @@ describe('WIMI booking UI', () => {
     await clickButton('Назад к данным')
     expect(container.querySelector<HTMLInputElement>('#wimi-address')?.value).toBe('Демо-адрес, 1')
     expect(container.querySelector<HTMLInputElement>('#wimi-duration')?.value).toBe('131')
+  })
+
+  test('submits a real server order only when the release flag is enabled', async () => {
+    process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE = 'true'
+    await selectAddress('Серверный адрес, 1')
+    await clickButton('Проверить заказ')
+    await clickButton('Создать заявку')
+    expect(container.querySelector('.wimi-order-id')?.textContent).toBe('4200')
+    expect(container.textContent).toContain('ЗАЯВКА СОЗДАНА НА СЕРВЕРЕ')
+    expect(container.textContent).toContain('Сервер подтвердил создание заявки')
+    expect(container.textContent).not.toContain('Реальная заявка не отправлена')
   })
 
   test('creates one in-memory demo result from the server quote and can reset', async () => {
