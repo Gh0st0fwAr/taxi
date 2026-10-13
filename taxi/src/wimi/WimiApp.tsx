@@ -212,8 +212,8 @@ const WimiApp: React.FC = () => {
               <SummaryRow label="Начало" value={order?.startTime ?? draft.startTime} />
               <SummaryRow label="Длительность" value={`${order?.durationMinutes ?? draft.durationMinutes} минут`} />
               <SummaryRow label="Дети" value={String(order?.childrenCount ?? draft.childrenCount)} />
-              <SummaryRow label="Возраст" value={order?.childrenAges ?? draft.childrenAges || 'Не указан'} />
-              <SummaryRow label="Комментарий" value={order?.notes ?? draft.notes || 'Нет'} />
+              <SummaryRow label="Возраст" value={(order?.childrenAges ?? draft.childrenAges) || 'Не указан'} />
+              <SummaryRow label="Комментарий" value={(order?.notes ?? draft.notes) || 'Нет'} />
               <SummaryRow label="Предварительная цена сервера" value={money(order?.estimatedTotalCents ?? serverQuoteCents ?? 0)} />
             </div>
             <p className="wimi-disclaimer">{realOrderId
