@@ -2,7 +2,7 @@ declare const describe: (name: string, fn: () => void) => void
 declare const test: (name: string, fn: () => void) => void
 declare const expect: (actual: unknown) => any
 
-import { buildNannyQuotePayload } from './nannyPricingApi'
+import { buildNannyQuotePayload } from './nannyPricingPayload'
 
 describe('nanny_pricing quote payload', () => {
   test('sends the service-local time with the Madrid summer offset', () => {
