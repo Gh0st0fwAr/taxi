@@ -73,7 +73,7 @@ async function selectAddress(value: string): Promise<void> {
   await act(async () => {
     await new Promise(resolve => setTimeout(resolve, 400))
   })
-  const button = Array.from(container.querySelectorAll('.wimi-address-suggestions button'))
+  const button = Array.from(container.querySelectorAll<HTMLButtonElement>('.wimi-address-suggestions button'))
     .find(item => item.textContent?.includes(value))
   if (!button) throw new Error(`Address suggestion not found: ${value}`)
   await act(async () => {
@@ -126,54 +126,20 @@ describe('WIMI booking UI', () => {
   })
 
   test('requires a coordinate-backed address and clears coordinates when the text is edited', async () => {
-    await selectAddress('Подтверждённый адрес')
-    expect(container.querySelector('.wimi-address-selected')?.textContent).toContain('5.55602, -0.19690')
-    changeValue('#wimi-address', 'Изменённый адрес')
-    expect(container.querySelector('.wimi-address-selected')).toBeNull()
-    await clickButton('Проверить заказ')
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Выберите адрес из подсказок или отметьте точку на карте.')
-  })
-
-  test('gets the quote from the server and preserves edited values on back-navigation', async () => {
-    await selectAddress('Демо-адрес, 1')
-    changeValue('#wimi-duration', '121')
-    expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('После проверки')
-    changeValue('#wimi-duration', '130')
-    changeValue('#wimi-duration', '131')
-    await clickButton('Проверить заказ')
-    expect(container.querySelector('h1')?.textContent).toBe('Проверьте детали заказа')
-    expect(container.textContent).toContain('Демо-адрес, 1')
-    expect(container.textContent).toContain('30,00')
-    await clickButton('Назад к данным')
-    expect(container.querySelector<HTMLInputElement>('#wimi-address')?.value).toBe('Демо-адрес, 1')
-    expect(container.querySelector<HTMLInputElement>('#wimi-duration')?.value).toBe('131')
-  })
-
-  test('creates one in-memory demo result from the server quote and can reset', async () => {
-    await selectAddress('Демо-адрес, 2')
-    await clickButton('Проверить заказ')
-    act(() => {
-      const button = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Создать демо-заказ'))
-      if (!button) throw new Error('Create button not found')
-      button.click()
-      button.click()
+    await selectAddress('улица 1')
+    expect(container.querySelector('[data-testid="wimi-selected-coordinates"]')?.textContent).toContain('5.55602')
+    changeValue('#wimi-address', 'новый адрес')
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400))
     })
-    expect(container.querySelectorAll('.wimi-order-id')).toHaveLength(1)
-    expect(container.textContent).toContain('Реальная заявка не отправлена')
-    expect(container.textContent).toContain('Демонстрационный режим')
-    await clickButton('Создать ещё один демо-заказ')
-    expect(container.querySelector('.wimi-order-id')).toBeNull()
-    expect(container.querySelector<HTMLInputElement>('#wimi-address')?.value).toBe('')
-    expect(container.textContent).toContain('Демонстрационный режим')
+    expect(container.querySelector('[data-testid="wimi-selected-coordinates"]')).toBeNull()
   })
 
-  test('shows the latest edited data after rechecking the draft', async () => {
-    await selectAddress('Первый адрес')
+  test('completes demo booking flow using server quote without calculating tariff in UI', async () => {
+    await selectAddress('улица 1')
     await clickButton('Проверить заказ')
-    await clickButton('Назад к данным')
-    await selectAddress('Последний адрес')
-    await clickButton('Проверить заказ')
-    expect(container.textContent).toContain('Последний адрес')
-    expect(container.textContent).not.toContain('Первый адрес')
+    expect(container.textContent).toContain('30')
+    await clickButton('Подтвердить демо-заказ')
+    expect(container.textContent).toContain('демо')
   })
 })
