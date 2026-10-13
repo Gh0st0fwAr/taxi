@@ -2,7 +2,6 @@ import React, { FormEvent, useRef, useState } from 'react'
 import { Link, Route, Routes, useNavigate } from 'react-router-dom'
 import {
   createDemoOrder,
-  MINIMUM_DURATION_MINUTES,
   validateBookingDraft,
   WimiBookingDraft,
   WimiDemoOrder,
@@ -107,9 +106,12 @@ const WimiApp: React.FC = () => {
     } catch (error) {
       if (requestId !== quoteRequestIdRef.current) return
       const message = error instanceof Error ? error.message : ''
+      const minimumDuration = /minimum duration is (\\d+) minutes/i.exec(message)
       setErrors([message.includes('Unauthorized')
         ? 'Для запроса цены войдите в аккаунт WIMI KIDS на этой платформе.'
-        : 'Не удалось получить цену с сервера. Заказ не создан. Проверьте соединение и попробуйте ещё раз.'])
+        : minimumDuration
+          ? `Минимальная длительность по правилам сервиса — ${minimumDuration[1]} минут. Заказ не создан.`
+          : 'Не удалось получить цену с сервера. Заказ не создан. Проверьте соединение и попробуйте ещё раз.'])
     } finally {
       if (requestId === quoteRequestIdRef.current)
         setIsQuoting(false)
@@ -239,7 +241,7 @@ const WimiApp: React.FC = () => {
             <div className="wimi-steps" aria-label="Этапы заказа">
               <div className={step === 'details' ? 'wimi-step is-active' : 'wimi-step is-done'}><span>1</span><div><strong>Детали</strong><small>Услуга и время</small></div></div>
               <div className={step === 'review' ? 'wimi-step is-active' : 'wimi-step'}><span>2</span><div><strong>Проверка</strong><small>Сумма и данные</small></div></div>
-              <div className="wimi-step"><span>3</span><div><strong>Готово</strong><small>Демо-результат</small></div></div>
+              <div className="wimi-step"><span>3</span><div><strong>Готово</strong><small>Результат</small></div></div>
             </div>
 
             {errors.length > 0 && (
@@ -276,7 +278,7 @@ const WimiApp: React.FC = () => {
                 <p className="wimi-field-hint">Проверка использует локальные часы браузера. Часовой пояс адреса и переходы на летнее время сервером пока не проверяются.</p>
                 <div className="wimi-field">
                   <label htmlFor="wimi-duration">Длительность, минут <span>*</span></label>
-                  <input id="wimi-duration" type="number" min={MINIMUM_DURATION_MINUTES} max="1080" step="1" value={draft.durationMinutes} onChange={event => update('durationMinutes', event.target.value === '' ? Number.NaN : Number(event.target.value))} required />
+                  <input id="wimi-duration" type="number" min="1" max="1080" step="1" value={draft.durationMinutes} onChange={event => update('durationMinutes', event.target.value === '' ? Number.NaN : Number(event.target.value))} required />
                   <small>Минимум 120 минут. Заказ должен завершиться не позднее 00:00.</small>
                 </div>
 
