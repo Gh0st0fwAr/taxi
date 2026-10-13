@@ -1,5 +1,7 @@
 export type WimiBookingDraft = {
   address: string
+  latitude?: number
+  longitude?: number
   date: string
   startTime: string
   durationMinutes: number
@@ -27,6 +29,14 @@ export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()):
 
   if (typeof safeDraft.address !== 'string' || !safeDraft.address.trim()) {
     errors.push('Укажите адрес оказания услуги.')
+  }
+
+  const latitude = safeDraft.latitude
+  const longitude = safeDraft.longitude
+  if (typeof latitude !== 'number' || typeof longitude !== 'number' ||
+    !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+    latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    errors.push('Выберите адрес из подсказок или отметьте точку на карте.')
   }
 
   if (!validDate) {
