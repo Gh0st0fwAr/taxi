@@ -88,7 +88,7 @@ export type NannyCreateOrderEnvelope = {
 export function parseNannyCreateOrderEnvelope(response: NannyCreateOrderEnvelope): NannyCreateOrderResult {
   const id = response.data?.b_id
   if (response.status !== 'success' || id === undefined || id === null || String(id).trim() === '') {
-    throw new Error(typeof response.message === 'string' ? response.message : 'Сервер не подтвердил создание заказа.')
+    throw new Error('Не удалось подтвердить создание заказа. Повторите попытку с той же заявкой; не создавайте новую.')
   }
   const numericId = Number(id)
   if (!Number.isSafeInteger(numericId) || numericId <= 0) {
