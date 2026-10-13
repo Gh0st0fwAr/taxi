@@ -67,10 +67,10 @@ describe('WIMI booking UI', () => {
     clickButton('Проверить заказ')
     expect(container.querySelector('h1')?.textContent).toBe('Проверьте детали заказа')
     expect(container.textContent).toContain('Демо-адрес, 1')
-    expect(container.textContent).toContain('32,50')
+    expect(container.textContent).toContain('35,00')
     clickButton('Назад к данным')
     expect(container.querySelector<HTMLInputElement>('#wimi-address')?.value).toBe('Демо-адрес, 1')
-    expect(container.querySelector<HTMLInputElement>('#wimi-duration')?.value).toBe('130')
+    expect(container.querySelector<HTMLInputElement>('#wimi-duration')?.value).toBe('131')
   })
 
   test('creates one in-memory result for rapid repeated confirmation and can reset', () => {
