@@ -1,13 +1,13 @@
-import React, { FormEvent, useMemo, useRef, useState } from 'react'
+import React, { FormEvent, useRef, useState } from 'react'
 import { Link, Route, Routes, useNavigate } from 'react-router-dom'
 import {
-  calculateBaseQuoteCents,
   createDemoOrder,
   MINIMUM_DURATION_MINUTES,
   validateBookingDraft,
   WimiBookingDraft,
   WimiDemoOrder,
 } from './mockAdapter'
+import { getNannyPricingQuote } from './nannyPricingApi'
 
 function localDateString(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -33,20 +33,41 @@ const WimiApp: React.FC = () => {
   const [errors, setErrors] = useState<string[]>([])
   const [step, setStep] = useState<'details' | 'review' | 'created'>('details')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isQuoting, setIsQuoting] = useState(false)
+  const [serverQuoteCents, setServerQuoteCents] = useState<number | null>(null)
   const submittingRef = useRef(false)
   const navigate = useNavigate()
 
-  const quoteCents = useMemo(() => calculateBaseQuoteCents(draft.durationMinutes), [draft.durationMinutes])
   const update = <K extends keyof WimiBookingDraft>(key: K, value: WimiBookingDraft[K]) => {
     setDraft(current => ({ ...current, [key]: value }))
+    if (key === 'date' || key === 'startTime' || key === 'durationMinutes') setServerQuoteCents(null)
   }
 
-  const review = (event: FormEvent<HTMLFormElement>) => {
+  const review = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (step !== 'details') return
+    if (step !== 'details' || isQuoting) return
     const nextErrors = validateBookingDraft(draft)
     setErrors(nextErrors)
-    if (nextErrors.length === 0) setStep('review')
+    if (nextErrors.length > 0) return
+
+    setIsQuoting(true)
+    try {
+      const quote = await getNannyPricingQuote(draft.date, draft.startTime, draft.durationMinutes)
+      const quotedCents = Math.round(Number(quote.price) * 100)
+      if (!Number.isSafeInteger(quotedCents) || quotedCents < 0) {
+        throw new Error('Invalid server quote')
+      }
+      setServerQuoteCents(quotedCents)
+      setErrors([])
+      setStep('review')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      setErrors([message.includes('Unauthorized')
+        ? 'Для запроса цены войдите в аккаунт WIMI KIDS на этой платформе.'
+        : 'Не удалось получить цену с сервера. Заказ не создан. Проверьте соединение и попробуйте ещё раз.'])
+    } finally {
+      setIsQuoting(false)
+    }
   }
 
   const submitDemoOrder = () => {
@@ -65,7 +86,8 @@ const WimiApp: React.FC = () => {
         return
       }
 
-      const created = createDemoOrder(draft)
+      if (serverQuoteCents === null) throw new Error('Server quote is missing')
+      const created = createDemoOrder(draft, serverQuoteCents)
       setOrder(created)
       setErrors([])
       setStep('created')
@@ -83,6 +105,7 @@ const WimiApp: React.FC = () => {
     setIsSubmitting(false)
     setDraft(initialDraft())
     setOrder(null)
+    setServerQuoteCents(null)
     setErrors([])
     setStep('details')
     navigate('/')
@@ -119,9 +142,9 @@ const WimiApp: React.FC = () => {
               <SummaryRow label="Дети" value={String(order.childrenCount)} />
               <SummaryRow label="Возраст" value={order.childrenAges || 'Не указан'} />
               <SummaryRow label="Комментарий" value={order.notes || 'Нет'} />
-              <SummaryRow label="Расчётная базовая сумма" value={money(order.estimatedTotalCents)} />
+              <SummaryRow label="Предварительная цена сервера" value={money(order.estimatedTotalCents)} />
             </div>
-            <p className="wimi-disclaimer">Итоговая сумма рассчитывается сервером в рабочей версии. Эта сумма — только демонстрационный предварительный расчёт. Данные не сохраняются после обновления или закрытия страницы.</p>
+            <p className="wimi-disclaimer">Предварительная сумма получена с сервера. Это всё ещё демо-запись: реальный заказ не создан, а окончательная цена зависит от фактического времени. Данные не сохраняются после обновления или закрытия страницы.</p>
             <button type="button" className="wimi-button wimi-button-primary wimi-full" onClick={reset}>Создать ещё один демо-заказ</button>
           </section>
         ) : (
@@ -129,7 +152,7 @@ const WimiApp: React.FC = () => {
             <section className="wimi-intro">
               <p className="wimi-eyebrow">WIMI KIDS · СЕРВИС ВЫЗОВА НЯНЬ</p>
               <h1>{step === 'review' ? 'Проверьте детали заказа' : 'Найдём время для заботы'}</h1>
-              <p className="wimi-muted">{step === 'review' ? 'Перед созданием демо-заказа проверьте адрес, время и предварительную сумму.' : 'Укажите основные детали — сейчас мы проверяем пользовательский сценарий без подключения к реальным заказам.'}</p>
+              <p className="wimi-muted">{step === 'review' ? 'Перед созданием демо-заказа проверьте адрес, время и предварительную сумму.' : 'Укажите основные детали — перед проверкой веб-версия запросит цену у сервера.'}</p>
             </section>
 
             <div className="wimi-steps" aria-label="Этапы заказа">
@@ -189,15 +212,15 @@ const WimiApp: React.FC = () => {
                 </div>
 
                 <div className="wimi-price-preview">
-                  <div><span>Предварительная базовая стоимость</span><small>€2,50 за каждый начатый 10-минутный блок; неполный блок округляется вверх. Минимум €30; доплаты за дополнительные услуги не включены.</small></div>
-                  <strong>{money(quoteCents)}</strong>
+                  <div><span>Цена сервера</span><small>Получим при проверке заказа. Клиентская версия не рассчитывает тариф самостоятельно.</small></div>
+                  <strong>После проверки</strong>
                 </div>
-                <p className="wimi-disclaimer">Расчёт демонстрационный. В рабочем сервисе тариф и итоговую сумму подтверждает сервер. Оплата — наличными няне вне сервиса.</p>
-                <button type="submit" className="wimi-button wimi-button-primary wimi-full">Проверить заказ <span aria-hidden="true">→</span></button>
+                <p className="wimi-disclaimer">Предварительная цена получена сервером. Создание остаётся демонстрационным; окончательная сумма определяется сервером по фактическому времени. Оплата — наличными няне вне сервиса.</p>
+                <button type="submit" className="wimi-button wimi-button-primary wimi-full" disabled={isQuoting}>{isQuoting ? 'Запрашиваем цену…' : 'Проверить заказ'} <span aria-hidden="true">→</span></button>
               </form>
             ) : (
               <section className="wimi-card" aria-labelledby="wimi-review-title">
-                <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">✓</span><div><h2 id="wimi-review-title">Детали демо-заказа</h2><p>Сверьте информацию перед локальным созданием тестовой записи.</p></div></div>
+                <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">✓</span><div><h2 id="wimi-review-title">Детали демо-заказа</h2><p>Сверьте данные и предварительную цену, полученную с сервера.</p></div></div>
                 <div className="wimi-summary">
                   <SummaryRow label="Адрес" value={draft.address} />
                   <SummaryRow label="Дата" value={draft.date} />
@@ -206,9 +229,9 @@ const WimiApp: React.FC = () => {
                   <SummaryRow label="Количество детей" value={String(draft.childrenCount)} />
                   <SummaryRow label="Возраст" value={draft.childrenAges || 'Не указан'} />
                   <SummaryRow label="Комментарий" value={draft.notes || 'Нет'} />
-                  <SummaryRow label="Предварительная базовая стоимость" value={money(quoteCents)} />
+                  <SummaryRow label="Предварительная цена сервера" value={serverQuoteCents === null ? 'Не получена' : money(serverQuoteCents)} />
                 </div>
-                <p className="wimi-disclaimer">Создание не вызывает API и не назначает няню. Демо-заказ хранится только в состоянии открытой страницы.</p>
+                <p className="wimi-disclaimer">Цена получена через nanny_pricing. Создание заказа пока остаётся демо: для реального create нужно подтвердить координаты адреса и точное соответствие полей backend DTO.</p>
                 <div className="wimi-actions">
                   <button type="button" className="wimi-button wimi-button-secondary" onClick={() => { setErrors([]); setStep('details') }}>Назад к данным</button>
                   <button type="button" className="wimi-button wimi-button-primary" onClick={submitDemoOrder} disabled={isSubmitting}>{isSubmitting ? 'Создаём…' : 'Создать демо-заказ'}</button>

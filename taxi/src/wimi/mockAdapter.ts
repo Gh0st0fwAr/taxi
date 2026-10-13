@@ -16,22 +16,8 @@ export type WimiDemoOrder = WimiBookingDraft & {
 }
 
 export const MINIMUM_DURATION_MINUTES = 120
-export const BILLING_BLOCK_MINUTES = 10
-export const BASE_BLOCK_PRICE_CENTS = 250
-export const MINIMUM_BASE_PRICE_CENTS = 3000
 const EARLIEST_START_MINUTES = 6 * 60
 const LATEST_START_MINUTES = 22 * 60
-
-export function calculateBaseQuoteCents(durationMinutes: number): number {
-  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return 0
-
-  // Any started 10-minute block is billed in full (€2.50 per block).
-  const billedBlocks = Math.ceil(durationMinutes / BILLING_BLOCK_MINUTES)
-  const blockTotal = billedBlocks * BASE_BLOCK_PRICE_CENTS
-  return durationMinutes >= MINIMUM_DURATION_MINUTES
-    ? Math.max(MINIMUM_BASE_PRICE_CENTS, blockTotal)
-    : blockTotal
-}
 
 export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()): string[] {
   const errors: string[] = []
@@ -77,16 +63,23 @@ export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()):
   return errors
 }
 
-export function createDemoOrder(draft: WimiBookingDraft, now = new Date()): WimiDemoOrder {
+export function createDemoOrder(
+  draft: WimiBookingDraft,
+  serverQuotedTotalCents: number,
+  now = new Date(),
+): WimiDemoOrder {
   const errors = validateBookingDraft(draft, now)
   if (errors.length > 0) throw new Error(errors.join(' '))
+  if (!Number.isSafeInteger(serverQuotedTotalCents) || serverQuotedTotalCents < 0) {
+    throw new Error('Не получена корректная предварительная цена сервера.')
+  }
 
   return {
     ...draft,
     id: `WIMI-DEMO-${now.getTime().toString(36).toUpperCase()}`,
     status: 'CREATED',
     createdAt: now.toISOString(),
-    estimatedTotalCents: calculateBaseQuoteCents(draft.durationMinutes),
+    estimatedTotalCents: serverQuotedTotalCents,
   }
 }
 

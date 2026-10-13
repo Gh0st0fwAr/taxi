@@ -5,7 +5,6 @@ declare const test: (name: string, fn: () => void) => void
 declare const expect: (actual: unknown) => any
 
 import {
-  calculateBaseQuoteCents,
   createDemoOrder,
   validateBookingDraft,
   WimiBookingDraft,
@@ -23,28 +22,6 @@ const draft: WimiBookingDraft = {
 const fixedNow = new Date(2030, 4, 1, 9, 0, 0)
 
 describe('WIMI demo booking rules', () => {
-  test('rounds any started 10-minute block up in integer cents', () => {
-    expect(calculateBaseQuoteCents(10)).toBe(250)
-    expect(calculateBaseQuoteCents(11)).toBe(500)
-    expect(calculateBaseQuoteCents(30)).toBe(750)
-    expect(calculateBaseQuoteCents(60)).toBe(1500)
-    expect(calculateBaseQuoteCents(90)).toBe(2250)
-    expect(calculateBaseQuoteCents(120)).toBe(3000)
-    expect(calculateBaseQuoteCents(121)).toBe(3250)
-    expect(calculateBaseQuoteCents(129)).toBe(3250)
-    expect(calculateBaseQuoteCents(130)).toBe(3250)
-    expect(calculateBaseQuoteCents(131)).toBe(3500)
-    expect(calculateBaseQuoteCents(149)).toBe(3750)
-    expect(calculateBaseQuoteCents(150)).toBe(3750)
-    expect(calculateBaseQuoteCents(151)).toBe(4000)
-    expect(calculateBaseQuoteCents(179)).toBe(4500)
-    expect(calculateBaseQuoteCents(180)).toBe(4500)
-    expect(calculateBaseQuoteCents(0)).toBe(0)
-    expect(calculateBaseQuoteCents(-10)).toBe(0)
-    expect(calculateBaseQuoteCents(Number.NaN)).toBe(0)
-    expect(calculateBaseQuoteCents(Number.POSITIVE_INFINITY)).toBe(0)
-  })
-
   test('rejects blank address and malformed or impossible dates', () => {
     expect(validateBookingDraft({ ...draft, address: '   ' }, fixedNow)).toContain('Укажите адрес оказания услуги.')
     for (const date of ['', '2030-2-01', '2030-02-30', 'not-a-date']) {
@@ -92,25 +69,21 @@ describe('WIMI demo booking rules', () => {
     }
   })
 
-  test('creates a local demo order with expected fields and integer quote', () => {
+  test('creates a local demo record using the server quote without calculating a tariff', () => {
     const now = new Date('2030-05-01T10:00:00.000Z')
-    const order = createDemoOrder(draft, now)
+    const order = createDemoOrder(draft, 3275, now)
     expect(order.id).toMatch(/^WIMI-DEMO-/)
     expect(order.status).toBe('CREATED')
     expect(order.createdAt).toBe(now.toISOString())
-    expect(order.estimatedTotalCents).toBe(3000)
+    expect(order.estimatedTotalCents).toBe(3275)
     expect(order.address).toBe(draft.address)
     expect(order.childrenCount).toBe(1)
     expect(order.notes).toBe('')
   })
 
-  test('rounds any started 10-minute block up and rejects invalid drafts on create', () => {
-    expect(createDemoOrder({ ...draft, durationMinutes: 121 }, fixedNow).estimatedTotalCents).toBe(3250)
-    expect(createDemoOrder({ ...draft, durationMinutes: 129 }, fixedNow).estimatedTotalCents).toBe(3250)
-    expect(createDemoOrder({ ...draft, durationMinutes: 130 }, fixedNow).estimatedTotalCents).toBe(3250)
-    expect(createDemoOrder({ ...draft, durationMinutes: 131 }, fixedNow).estimatedTotalCents).toBe(3500)
-    expect(createDemoOrder({ ...draft, durationMinutes: 149 }, fixedNow).estimatedTotalCents).toBe(3750)
-    expect(createDemoOrder({ ...draft, durationMinutes: 150 }, fixedNow).estimatedTotalCents).toBe(3750)
-    expect(() => createDemoOrder({ ...draft, address: ' ' }, fixedNow)).toThrow('Укажите адрес оказания услуги.')
+  test('rejects an invalid quote amount when creating a demo record', () => {
+    expect(() => createDemoOrder(draft, Number.NaN, fixedNow)).toThrow('Не получена корректная предварительная цена сервера.')
+    expect(() => createDemoOrder(draft, -1, fixedNow)).toThrow('Не получена корректная предварительная цена сервера.')
+    expect(() => createDemoOrder({ ...draft, address: ' ' }, 3000, fixedNow)).toThrow('Укажите адрес оказания услуги.')
   })
 })
