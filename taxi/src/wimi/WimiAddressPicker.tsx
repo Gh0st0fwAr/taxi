@@ -20,7 +20,7 @@ interface WimiAddressPickerProps {
   onSelect: (point: WimiSelectedAddress) => void
 }
 
-const isValidCoordinates = (latitude: unknown, longitude: unknown): latitude is number =>
+const isValidCoordinates = (latitude: unknown, longitude: unknown): boolean =>
   typeof latitude === 'number' &&
   Number.isFinite(latitude) &&
   latitude >= -90 &&
@@ -33,13 +33,13 @@ const isValidCoordinates = (latitude: unknown, longitude: unknown): latitude is 
 const getPointCoordinates = (point?: IAddressPoint | null): [number, number] | null => {
   if (!point || !isValidCoordinates(point.latitude, point.longitude))
     return null
-  return [point.latitude, point.longitude]
+  return [Number(point.latitude), Number(point.longitude)]
 }
 
 const getPlaceCoordinates = (place: { lat?: unknown; lon?: unknown } | null | undefined): [number, number] | null => {
   const latitude = typeof place?.lat === 'string' ? Number(place.lat) : place?.lat
   const longitude = typeof place?.lon === 'string' ? Number(place.lon) : place?.lon
-  return isValidCoordinates(latitude, longitude) ? [latitude, longitude] : null
+  return isValidCoordinates(latitude, longitude) ? [Number(latitude), Number(longitude)] : null
 }
 
 function MapCenterReporter({ onCenterChange }: { onCenterChange: (center: [number, number]) => void }) {
@@ -120,6 +120,7 @@ const WimiAddressPicker: React.FC<WimiAddressPickerProps> = ({
 
   const selectPoint = (point: WimiSelectedAddress) => {
     selectedAddressRef.current = point.address
+    setIsResolving(false)
     setSuggestions([])
     setSearchError('')
     setMapError('')
@@ -284,7 +285,7 @@ const WimiAddressPicker: React.FC<WimiAddressPickerProps> = ({
       {mapError && <p className="wimi-address-error" role="status">{mapError}</p>}
       {hasSelectedCoordinates && (
         <p className="wimi-address-selected" role="status">
-          Точка выбрана · {latitude.toFixed(5)}, {longitude.toFixed(5)}
+          Точка выбрана · {Number(latitude).toFixed(5)}, {Number(longitude).toFixed(5)}
         </p>
       )}
 
