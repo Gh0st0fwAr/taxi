@@ -14,11 +14,12 @@ const draft = {
 }
 
 describe('nanny_pricing create DTO', () => {
-  test('maps the single service location, duration and children to the observed bot DTO', () => {
+  test('maps the single service location, planned duration and children to the observed bot DTO', () => {
     expect(buildNannyCreatePayload(draft, 'wimi-order-123')).toEqual({
       action: 'create',
       request_key: 'wimi-order-123',
       time_zone: 'Europe/Madrid',
+      duration_min: 120,
       order: {
         b_start_latitude: '40.4168',
         b_start_longitude: '-3.7038',
@@ -45,6 +46,7 @@ describe('nanny_pricing create DTO', () => {
       startTime: '10:00',
       durationMinutes: 130,
     }, 'wimi-order-123')
+    expect(payload.duration_min).toBe(130)
     expect(payload.order.b_start_datetime).toBe('2026-07-10 10:00:00+02:00')
     expect(payload.order.b_options.b_end_datetime).toBe('2026-07-10 10:10:00+00:00')
   })
