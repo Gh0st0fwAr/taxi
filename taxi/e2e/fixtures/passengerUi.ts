@@ -424,23 +424,22 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   let entered = false
 
   for (let attempt = 1; attempt <= 3 && !entered; attempt += 1) {
-    await expect(input, 'поле телефона доступно для ввода').toBeEditable({ timeout: 30_000 })
-    await input.click()
-    await input.press('Control+A')
-    await input.press('Backspace')
-
-    // The mask keeps +233 even when the editable national number is empty.
-    // Waiting for this state prevents stale profile state from overwriting typing.
-    await expect
-      .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
-        message: `маска телефона очищена перед вводом (попытка ${attempt})`,
-        timeout: 3_000,
-      })
-      .toBe('233')
-
-    await input.pressSequentially(nationalDigits, { delay: 60 })
-
     try {
+      await expect(input, 'поле телефона доступно для ввода').toBeEditable({ timeout: 10_000 })
+      await input.click()
+      await input.press('Control+A')
+      await input.press('Backspace')
+
+      // The mask keeps +233 even when the editable national number is empty.
+      // Waiting for this state prevents stale profile state from overwriting typing.
+      await expect
+        .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
+          message: `маска телефона очищена перед вводом (попытка ${attempt})`,
+          timeout: 3_000,
+        })
+        .toBe('233')
+
+      await input.pressSequentially(nationalDigits, { delay: 60 })
       await expect
         .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
           message: 'поле телефона содержит введённый тестовый номер',
@@ -451,8 +450,8 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
     } catch (error) {
       if (attempt === 3)
         throw error
-      // A controlled mask can race one input event; restart from a verified
-      // empty national part rather than continuing with a partially stale value.
+      // Retry the entire clear-and-type sequence if the controlled mask restores
+      // stale state at either stage; never continue from a partially entered number.
     }
   }
 
