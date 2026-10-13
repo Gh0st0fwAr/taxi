@@ -12,6 +12,8 @@ import {
 
 const draft: WimiBookingDraft = {
   address: 'Calle Mayor 1, Málaga',
+  latitude: 36.7213,
+  longitude: -4.4214,
   date: '2030-05-10',
   startTime: '10:00',
   durationMinutes: 120,
@@ -22,8 +24,11 @@ const draft: WimiBookingDraft = {
 const fixedNow = new Date(2030, 4, 1, 9, 0, 0)
 
 describe('WIMI demo booking rules', () => {
-  test('rejects blank address and malformed or impossible dates', () => {
+  test('rejects blank address, missing/out-of-range coordinates, and malformed dates', () => {
     expect(validateBookingDraft({ ...draft, address: '   ' }, fixedNow)).toContain('Укажите адрес оказания услуги.')
+    expect(validateBookingDraft({ ...draft, latitude: undefined, longitude: undefined }, fixedNow)).toContain('Выберите адрес из подсказок или отметьте точку на карте.')
+    expect(validateBookingDraft({ ...draft, latitude: 91 }, fixedNow)).toContain('Выберите адрес из подсказок или отметьте точку на карте.')
+    expect(validateBookingDraft({ ...draft, longitude: 181 }, fixedNow)).toContain('Выберите адрес из подсказок или отметьте точку на карте.')
     for (const date of ['', '2030-2-01', '2030-02-30', 'not-a-date']) {
       expect(validateBookingDraft({ ...draft, date }, fixedNow)).toContain('Укажите корректную дату.')
     }

@@ -8,6 +8,8 @@ import {
   WimiDemoOrder,
 } from './mockAdapter'
 import { getNannyPricingQuote } from './nannyPricingApi'
+import WimiAddressPicker from './WimiAddressPicker'
+import type { WimiSelectedAddress } from './WimiAddressPicker'
 
 function localDateString(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -36,11 +38,39 @@ const WimiApp: React.FC = () => {
   const [isQuoting, setIsQuoting] = useState(false)
   const [serverQuoteCents, setServerQuoteCents] = useState<number | null>(null)
   const submittingRef = useRef(false)
+  const quoteRequestIdRef = useRef(0)
   const navigate = useNavigate()
 
   const update = <K extends keyof WimiBookingDraft>(key: K, value: WimiBookingDraft[K]) => {
-    setDraft(current => ({ ...current, [key]: value }))
-    if (key === 'date' || key === 'startTime' || key === 'durationMinutes') setServerQuoteCents(null)
+    if (key === 'address') {
+      setDraft(current => ({
+        ...current,
+        address: value as string,
+        latitude: undefined,
+        longitude: undefined,
+      }))
+    } else {
+      setDraft(current => ({ ...current, [key]: value }))
+    }
+
+    if (key === 'address' || key === 'date' || key === 'startTime' || key === 'durationMinutes') {
+      quoteRequestIdRef.current += 1
+      setServerQuoteCents(null)
+      setIsQuoting(false)
+    }
+  }
+
+  const selectAddressPoint = (point: WimiSelectedAddress) => {
+    quoteRequestIdRef.current += 1
+    setDraft(current => ({
+      ...current,
+      address: point.address,
+      latitude: point.latitude,
+      longitude: point.longitude,
+    }))
+    setServerQuoteCents(null)
+    setIsQuoting(false)
+    setErrors([])
   }
 
   const review = async (event: FormEvent<HTMLFormElement>) => {
@@ -50,9 +80,11 @@ const WimiApp: React.FC = () => {
     setErrors(nextErrors)
     if (nextErrors.length > 0) return
 
+    const requestId = ++quoteRequestIdRef.current
     setIsQuoting(true)
     try {
       const quote = await getNannyPricingQuote(draft.date, draft.startTime, draft.durationMinutes)
+      if (requestId !== quoteRequestIdRef.current) return
       const quotedCents = Math.round(Number(quote.price) * 100)
       if (!Number.isSafeInteger(quotedCents) || quotedCents < 0) {
         throw new Error('Invalid server quote')
@@ -61,12 +93,14 @@ const WimiApp: React.FC = () => {
       setErrors([])
       setStep('review')
     } catch (error) {
+      if (requestId !== quoteRequestIdRef.current) return
       const message = error instanceof Error ? error.message : ''
       setErrors([message.includes('Unauthorized')
         ? 'Для запроса цены войдите в аккаунт WIMI KIDS на этой платформе.'
         : 'Не удалось получить цену с сервера. Заказ не создан. Проверьте соединение и попробуйте ещё раз.'])
     } finally {
-      setIsQuoting(false)
+      if (requestId === quoteRequestIdRef.current)
+        setIsQuoting(false)
     }
   }
 
@@ -102,7 +136,9 @@ const WimiApp: React.FC = () => {
 
   const reset = () => {
     submittingRef.current = false
+    quoteRequestIdRef.current += 1
     setIsSubmitting(false)
+    setIsQuoting(false)
     setDraft(initialDraft())
     setOrder(null)
     setServerQuoteCents(null)
@@ -136,6 +172,9 @@ const WimiApp: React.FC = () => {
             <div className="wimi-order-id">{order.id}</div>
             <div className="wimi-summary">
               <SummaryRow label="Адрес" value={order.address} />
+              {typeof order.latitude === 'number' && typeof order.longitude === 'number' && (
+                <SummaryRow label="Координаты" value={`${order.latitude.toFixed(5)}, ${order.longitude.toFixed(5)}`} />
+              )}
               <SummaryRow label="Дата" value={order.date} />
               <SummaryRow label="Начало" value={order.startTime} />
               <SummaryRow label="Длительность" value={`${order.durationMinutes} минут`} />
@@ -173,7 +212,13 @@ const WimiApp: React.FC = () => {
                 <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">⌂</span><div><h2>Где и когда нужна няня?</h2><p>Время указывается по месту оказания услуги.</p></div></div>
                 <div className="wimi-field">
                   <label htmlFor="wimi-address">Адрес оказания услуги <span>*</span></label>
-                  <input id="wimi-address" autoComplete="street-address" value={draft.address} onChange={event => update('address', event.target.value)} placeholder="Улица, дом, город" required />
+                  <WimiAddressPicker
+                    value={draft.address}
+                    latitude={draft.latitude}
+                    longitude={draft.longitude}
+                    onChange={value => update('address', value)}
+                    onSelect={selectAddressPoint}
+                  />
                 </div>
                 <div className="wimi-grid-two">
                   <div className="wimi-field">
@@ -223,6 +268,9 @@ const WimiApp: React.FC = () => {
                 <div className="wimi-card-heading"><span className="wimi-heading-icon" aria-hidden="true">✓</span><div><h2 id="wimi-review-title">Детали демо-заказа</h2><p>Сверьте данные и предварительную цену, полученную с сервера.</p></div></div>
                 <div className="wimi-summary">
                   <SummaryRow label="Адрес" value={draft.address} />
+                  {typeof draft.latitude === 'number' && typeof draft.longitude === 'number' && (
+                    <SummaryRow label="Координаты" value={`${draft.latitude.toFixed(5)}, ${draft.longitude.toFixed(5)}`} />
+                  )}
                   <SummaryRow label="Дата" value={draft.date} />
                   <SummaryRow label="Время начала" value={draft.startTime} />
                   <SummaryRow label="Длительность" value={`${draft.durationMinutes} минут`} />

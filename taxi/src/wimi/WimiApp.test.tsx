@@ -10,6 +10,47 @@ jest.mock('./nannyPricingApi', () => ({
   getNannyPricingQuote: () => Promise.resolve({ formula: 'base_price', price: '30', options: {}, calculationType: 'complete' }),
 }))
 
+jest.mock('../API', () => ({
+  getPointSuggestions: (query: string) => {
+    if (query === 'Сбой адреса')
+      return Promise.reject(new Error('suggestions unavailable'))
+    const result = [{
+      type: 2,
+      point: { address: query, shortAddress: query, latitude: 5.55602, longitude: -0.1969 },
+    }]
+    return query === 'Медленный адрес' ?
+      new Promise(resolve => setTimeout(() => resolve(result), 300)) :
+      Promise.resolve(result)
+  },
+  geocode: (query: string) => Promise.resolve({
+    display_name: query,
+    lat: '5.55602',
+    lon: '-0.1969',
+    address: {},
+  }),
+  reverseGeocode: (latitude: string, longitude: string) => Promise.resolve({
+    display_name: `Точка ${latitude}, ${longitude}`,
+  }),
+}))
+
+
+jest.mock('react-leaflet', () => {
+  const React = require('react')
+  const mockMap = { getCenter: () => ({ lat: 35.7595, lng: -5.834 }) }
+  return {
+    MapContainer: (props: { children?: React.ReactNode; className?: string }) =>
+      React.createElement('div', { className: props.className, 'data-testid': 'leaflet-map' }, props.children),
+    TileLayer: () => null,
+    useMap: () => mockMap,
+    useMapEvents: () => null,
+  }
+})
+
+jest.mock('../tools/utils', () => ({
+  getAttribution: () => 'Map attribution',
+  getTileServerUrl: () => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+}))
+
 import React, { act } from 'react'
 import { createRoot, Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
@@ -45,6 +86,20 @@ function changeValue(selector: string, value: string): void {
   })
 }
 
+async function selectAddress(value: string): Promise<void> {
+  changeValue('#wimi-address', value)
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 400))
+  })
+  const button = Array.from(container.querySelectorAll<HTMLButtonElement>('.wimi-address-suggestions button'))
+    .find(item => item.textContent?.includes(value))
+  if (!button) throw new Error(`Address suggestion not found: ${value}`)
+  await act(async () => {
+    button.click()
+    await Promise.resolve()
+  })
+}
+
 describe('WIMI booking UI', () => {
   beforeEach(() => {
     container = document.createElement('div')
@@ -65,8 +120,40 @@ describe('WIMI booking UI', () => {
     expect(container.querySelector<HTMLLabelElement>('label[for="wimi-address"]')?.htmlFor).toBe('wimi-address')
   })
 
+
+  test('shows a recoverable message when address suggestions fail', async () => {
+    changeValue('#wimi-address', 'Сбой адреса')
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400))
+    })
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Не удалось загрузить подсказки')
+    expect(container.querySelector<HTMLInputElement>('#wimi-address')?.value).toBe('Сбой адреса')
+  })
+
+  test('does not display a late response for an older address query', async () => {
+    changeValue('#wimi-address', 'Медленный адрес')
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400))
+    })
+    changeValue('#wimi-address', 'Новый адрес')
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400))
+    })
+    expect(container.querySelector('.wimi-address-suggestions')?.textContent).toContain('Новый адрес')
+    expect(container.querySelector('.wimi-address-suggestions')?.textContent).not.toContain('Медленный адрес')
+  })
+
+  test('requires a coordinate-backed address and clears coordinates when the text is edited', async () => {
+    await selectAddress('Подтверждённый адрес')
+    expect(container.querySelector('.wimi-address-selected')?.textContent).toContain('5.55602, -0.19690')
+    changeValue('#wimi-address', 'Изменённый адрес')
+    expect(container.querySelector('.wimi-address-selected')).toBeNull()
+    await clickButton('Проверить заказ')
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Выберите адрес из подсказок или отметьте точку на карте.')
+  })
+
   test('gets the quote from the server and preserves edited values on back-navigation', async () => {
-    changeValue('#wimi-address', 'Демо-адрес, 1')
+    await selectAddress('Демо-адрес, 1')
     changeValue('#wimi-duration', '121')
     expect(container.querySelector('.wimi-price-preview strong')?.textContent).toContain('После проверки')
     changeValue('#wimi-duration', '130')
@@ -81,7 +168,7 @@ describe('WIMI booking UI', () => {
   })
 
   test('creates one in-memory demo result from the server quote and can reset', async () => {
-    changeValue('#wimi-address', 'Демо-адрес, 2')
+    await selectAddress('Демо-адрес, 2')
     await clickButton('Проверить заказ')
     act(() => {
       const button = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes('Создать демо-заказ'))
@@ -99,10 +186,10 @@ describe('WIMI booking UI', () => {
   })
 
   test('shows the latest edited data after rechecking the draft', async () => {
-    changeValue('#wimi-address', 'Первый адрес')
+    await selectAddress('Первый адрес')
     await clickButton('Проверить заказ')
     await clickButton('Назад к данным')
-    changeValue('#wimi-address', 'Последний адрес')
+    await selectAddress('Последний адрес')
     await clickButton('Проверить заказ')
     expect(container.textContent).toContain('Последний адрес')
     expect(container.textContent).not.toContain('Первый адрес')
