@@ -64,6 +64,7 @@ import WimiRoot from './WimiApp'
 let container: HTMLDivElement
 let root: Root
 const originalRealCreateFlag = process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE
+const originalCrypto = globalThis.crypto
 
 async function clickButton(label: string): Promise<void> {
   const button = Array.from(container.querySelectorAll('button')).find(item => item.textContent?.includes(label))
@@ -109,6 +110,12 @@ async function selectAddress(value: string): Promise<void> {
 describe('WIMI booking UI', () => {
   beforeEach(() => {
     process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE = 'false'
+    // Jest's jsdom crypto implementation may not provide randomUUID/getRandomValues.
+    // Supply a deterministic UUID for the UI test; production uses Web Crypto.
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: { randomUUID: () => 'test-request-key-0001' } as Crypto,
+    })
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -118,6 +125,7 @@ describe('WIMI booking UI', () => {
   afterEach(() => {
     act(() => root.unmount())
     container.remove()
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: originalCrypto })
     if (originalRealCreateFlag === undefined) delete process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE
     else process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE = originalRealCreateFlag
   })
