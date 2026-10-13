@@ -114,7 +114,7 @@ describe('WIMI booking UI', () => {
     // Supply a deterministic UUID for the UI test; production uses Web Crypto.
     Object.defineProperty(globalThis, 'crypto', {
       configurable: true,
-      value: { randomUUID: () => 'test-request-key-0001' } as Crypto,
+      value: { randomUUID: () => 'test-request-key-0001' } as unknown as Crypto,
     })
     container = document.createElement('div')
     document.body.appendChild(container)
