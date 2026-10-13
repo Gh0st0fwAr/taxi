@@ -52,7 +52,7 @@ describe('WIMI demo booking rules', () => {
       expect(validateBookingDraft({ ...draft, startTime }, fixedNow).length).toBeGreaterThan(0)
     }
     expect(validateBookingDraft({ ...draft, startTime: '22:00' }, fixedNow)).toContain(
-      'Начало в 22:00 не позволяет выполнить минимальную длительность до полуночи.',
+      'Начало в 22:00 не позволяет завершить заказ до полуночи.',
     )
     expect(validateBookingDraft({ ...draft, startTime: '06:00' }, fixedNow)).toEqual([])
   })
