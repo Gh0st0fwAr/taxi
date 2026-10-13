@@ -20,6 +20,13 @@ function money(cents: number): string {
   return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 }
 
+function createRequestKey(): string {
+  const cryptoApi = globalThis.crypto
+  if (typeof cryptoApi.randomUUID === 'function') return cryptoApi.randomUUID()
+  const bytes = cryptoApi.getRandomValues(new Uint8Array(16))
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
 const initialDraft = (): WimiBookingDraft => ({
   address: '',
   date: localDateString(new Date(Date.now() + 24 * 60 * 60 * 1000)),
@@ -131,7 +138,7 @@ const WimiApp: React.FC = () => {
           throw new Error('Выберите адрес с подтверждёнными координатами.')
         }
         // Keep the same key after a timeout/error so a retry can recover the same server order.
-        const requestKey = createRequestKeyRef.current ?? crypto.randomUUID()
+        const requestKey = createRequestKeyRef.current ?? createRequestKey()
         createRequestKeyRef.current = requestKey
         const result = await createNannyOrder({
           latitude: draft.latitude,
