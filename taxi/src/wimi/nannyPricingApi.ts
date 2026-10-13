@@ -1,6 +1,9 @@
 import axios from 'axios'
 import Config from '../config'
 import { addToFormData, apiMethod, IApiMethodArguments } from '../tools/api'
+import { buildNannyQuotePayload } from './nannyPricingPayload'
+
+export { buildNannyQuotePayload } from './nannyPricingPayload'
 
 export type NannyPricingQuote = {
   formula: string
@@ -14,9 +17,6 @@ type NannyPricingEnvelope = {
   message?: string | null
   data?: NannyPricingQuote | null
 }
-
-export { buildNannyQuotePayload } from './nannyPricingPayload'
-import { buildNannyQuotePayload } from './nannyPricingPayload'
 
 const _getNannyPricingQuote = (
   { formData }: IApiMethodArguments,
