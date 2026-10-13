@@ -108,6 +108,7 @@ async function selectAddress(value: string): Promise<void> {
 
 describe('WIMI booking UI', () => {
   beforeEach(() => {
+    process.env.REACT_APP_WIMI_ENABLE_REAL_CREATE = 'false'
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
