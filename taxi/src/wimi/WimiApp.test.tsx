@@ -33,6 +33,24 @@ jest.mock('../API', () => ({
   }),
 }))
 
+
+jest.mock('react-leaflet', () => {
+  const React = require('react')
+  const mockMap = { getCenter: () => ({ lat: 35.7595, lng: -5.834 }) }
+  return {
+    MapContainer: (props: { children?: React.ReactNode; className?: string }) =>
+      React.createElement('div', { className: props.className, 'data-testid': 'leaflet-map' }, props.children),
+    TileLayer: () => null,
+    useMap: () => mockMap,
+    useMapEvents: () => null,
+  }
+})
+
+jest.mock('../tools/utils', () => ({
+  getAttribution: () => 'Map attribution',
+  getTileServerUrl: () => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+}))
+
 import React, { act } from 'react'
 import { createRoot, Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
