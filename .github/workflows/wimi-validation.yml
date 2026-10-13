@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - feat/wimi-address-contract
+      - feat/wimi-nanny-order-create-contract
   pull_request:
     branches:
       - main
       - feat/wimi-server-pricing-quote
+      - feat/wimi-address-contract
 
 permissions:
   contents: read
