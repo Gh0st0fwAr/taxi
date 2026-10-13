@@ -1,9 +1,13 @@
 name: WIMI foundation validation
 
 on:
+  push:
+    branches:
+      - feat/wimi-address-contract
   pull_request:
     branches:
       - main
+      - feat/wimi-server-pricing-quote
 
 permissions:
   contents: read
@@ -45,10 +49,10 @@ jobs:
           CI: "false"
         run: npm run build:wimi
 
-      - name: Run Jest
+      - name: Run WIMI Jest tests
         env:
           CI: "true"
-        run: npm run test:nix -- --runInBand
+        run: npm run test:nix -- --runInBand src/wimi
 
       - name: Upload build artifacts
         if: always()
