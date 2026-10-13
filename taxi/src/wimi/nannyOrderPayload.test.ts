@@ -75,7 +75,7 @@ describe('nanny_pricing create DTO', () => {
   })
 
   test('rejects unsuccessful or malformed create responses', () => {
-    expect(() => parseNannyCreateOrderEnvelope({ status: 'error', message: 'denied' })).toThrow('denied')
+    expect(() => parseNannyCreateOrderEnvelope({ status: 'error', message: 'internal database error' })).toThrow('Не удалось подтвердить создание заказа')
     expect(() => parseNannyCreateOrderEnvelope({ status: 'success', data: { b_id: 'not-an-id' } })).toThrow('идентификатор')
   })
 })
