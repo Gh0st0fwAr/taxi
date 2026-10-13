@@ -21,6 +21,7 @@ describe('nanny_pricing quote payload', () => {
       action: 'quote',
       when: '2026-01-10 10:00:00+01:00',
       time_zone: 'Europe/Madrid',
+      duration_min: 120,
       options: [],
     })
   })
