@@ -27,6 +27,11 @@ jest.mock('react-leaflet', () => {
   }
 })
 
+jest.mock('../tools/utils', () => ({
+  getAttribution: () => 'Map attribution',
+  getTileServerUrl: () => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+}))
+
 import React, { act } from 'react'
 import { createRoot, Root } from 'react-dom/client'
 import WimiAddressPicker from './WimiAddressPicker'
