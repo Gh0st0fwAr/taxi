@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { geocode, getPointSuggestions, reverseGeocode } from '../API'
 import SITE_CONSTANTS from '../siteConstants'
 import { getAttribution, getTileServerUrl } from '../tools/utils'
-import { IAddressPoint, ISuggestion } from '../types/types'
+import type { IAddressPoint, ISuggestion } from '../types/types'
 
 export interface WimiSelectedAddress {
   address: string
@@ -216,6 +216,10 @@ const WimiAddressPicker: React.FC<WimiAddressPickerProps> = ({
       const center = await getInitialMapCenter()
       if (requestId === mapRequestId.current)
         setMapCenter(center)
+    } catch {
+      const fallback = SITE_CONSTANTS.DEFAULT_POSITION
+      if (requestId === mapRequestId.current)
+        setMapCenter(isValidCoordinates(fallback[0], fallback[1]) ? fallback : [0, 0])
     } finally {
       if (requestId === mapRequestId.current)
         setIsMapLoading(false)
@@ -226,28 +230,36 @@ const WimiAddressPicker: React.FC<WimiAddressPickerProps> = ({
     mapRequestId.current += 1
     setIsMapOpen(false)
     setIsMapLoading(false)
+    setIsResolving(false)
   }
 
   const chooseMapCenter = async () => {
     if (!mapCenter || !isValidCoordinates(mapCenter[0], mapCenter[1]))
       return
 
+    const requestId = mapRequestId.current
     const [pointLatitude, pointLongitude] = mapCenter
     setIsResolving(true)
     setMapError('')
     try {
       const place = await reverseGeocode(String(pointLatitude), String(pointLongitude))
+      if (requestId !== mapRequestId.current)
+        return
       const address = String(place?.display_name || '').trim()
       if (!address)
         throw new Error('Reverse geocoder returned no address')
       selectPoint({ address, latitude: pointLatitude, longitude: pointLongitude })
     } catch {
+      if (requestId !== mapRequestId.current)
+        return
       const coordinateLabel = `Точка на карте (${pointLatitude.toFixed(5)}, ${pointLongitude.toFixed(5)})`
       selectPoint({ address: coordinateLabel, latitude: pointLatitude, longitude: pointLongitude })
       setMapError('Адрес не распознан. Выбранная точка и координаты сохранены; проверьте адрес перед продолжением.')
     } finally {
-      setIsResolving(false)
-      closeMap()
+      if (requestId === mapRequestId.current) {
+        setIsResolving(false)
+        closeMap()
+      }
     }
   }
 
