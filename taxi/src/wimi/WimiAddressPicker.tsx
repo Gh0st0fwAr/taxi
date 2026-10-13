@@ -274,6 +274,7 @@ const WimiAddressPicker: React.FC<WimiAddressPickerProps> = ({
           value={value}
           onChange={event => {
             selectedAddressRef.current = ''
+            setIsResolving(false)
             setSearchError('')
             setMapError('')
             onChange(event.target.value)
