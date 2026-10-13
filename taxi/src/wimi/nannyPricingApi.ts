@@ -18,24 +18,35 @@ type NannyPricingEnvelope = {
   data?: NannyPricingQuote | null
 }
 
+/**
+ * Only a duration-aware server calculation may be shown as the booking quote.
+ * The current template returns calculationType="incomplete" with duration=0;
+ * fail closed until the backend implements the approved duration tariff.
+ */
+export function parseNannyPricingEnvelope(res: NannyPricingEnvelope): NannyPricingQuote {
+  if (res.status !== 'success' || !res.data || !Number.isFinite(Number(res.data.price))) {
+    throw new Error(res.message || 'Сервер не вернул предварительную цену.')
+  }
+  if (res.data.calculationType !== 'complete') {
+    throw new Error('Сервер пока не поддерживает полный расчёт цены по длительности. Заказ не создан.')
+  }
+  return res.data
+}
+
 const _getNannyPricingQuote = (
   { formData }: IApiMethodArguments,
   date: string,
   startTime: string,
+  durationMinutes: number,
 ): Promise<NannyPricingQuote> => {
   addToFormData(formData, {
     is_var: 1,
-    s_t_data: JSON.stringify(buildNannyQuotePayload(date, startTime)),
+    s_t_data: JSON.stringify(buildNannyQuotePayload(date, startTime, durationMinutes)),
   })
 
   return axios.post(`${Config.API_URL}/script/template/nanny_pricing`, formData)
     .then(res => res.data as NannyPricingEnvelope)
-    .then((res) => {
-      if (res.status !== 'success' || !res.data || !Number.isFinite(Number(res.data.price))) {
-        throw new Error(res.message || 'Сервер не вернул предварительную цену.')
-      }
-      return res.data
-    })
+    .then(parseNannyPricingEnvelope)
 }
 
 export const getNannyPricingQuote = apiMethod<typeof _getNannyPricingQuote>(_getNannyPricingQuote)
