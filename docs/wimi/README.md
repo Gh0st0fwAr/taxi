@@ -11,6 +11,7 @@ prove that the backend contract is ready.
 - [WIMI-003 — Backend readiness and integration blockers](WIMI-003-backend-readiness.md)
 - [WIMI-004 — Mock-first nanny booking UI](https://github.com/Gh0st0fwAr/taxi/pull/3)
 - [WIMI-005 — Booking flow hardening and regression tests](WIMI-005-booking-flow-hardening.md)
+- [WIMI-006 — Backend contract and safe gateway](WIMI-006-backend-contract-and-safe-gateway.md)
 
 ## Current scope
 
@@ -24,7 +25,9 @@ prove that the backend contract is ready.
 - WIMI-005 hardens the existing mock flow and its regression coverage; it does
   not implement the backend.
 - WIMI-003 remains the integration-readiness audit and release-blocker list.
-  Production integration must not be enabled until its blockers are resolved.
+  WIMI-006 defines the next contract and secure gateway work, but does not
+  authorize production create before all gates pass.
+- Production integration must not be enabled until its blockers are resolved.
 
 ## Historical foundation verification
 
