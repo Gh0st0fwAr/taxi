@@ -19,7 +19,7 @@ jest.mock('react-leaflet', () => {
     getCenter: () => ({ lat: 35.7595, lng: -5.834 }),
   }
   return {
-    MapContainer: (props: { children?: unknown; className?: string }) =>
+    MapContainer: (props: { children?: React.ReactNode; className?: string }) =>
       React.createElement('div', { className: props.className, 'data-testid': 'leaflet-map' }, props.children),
     TileLayer: () => null,
     useMap: () => mockMap,
