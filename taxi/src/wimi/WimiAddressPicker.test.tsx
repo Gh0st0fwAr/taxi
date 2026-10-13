@@ -29,7 +29,8 @@ jest.mock('react-leaflet', () => {
 
 import React, { act } from 'react'
 import { createRoot, Root } from 'react-dom/client'
-import WimiAddressPicker, { WimiSelectedAddress } from './WimiAddressPicker'
+import WimiAddressPicker from './WimiAddressPicker'
+import type { WimiSelectedAddress } from './WimiAddressPicker'
 
 let container: HTMLDivElement
 let root: Root
