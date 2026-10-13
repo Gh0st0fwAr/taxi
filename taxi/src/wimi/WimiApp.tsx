@@ -106,7 +106,7 @@ const WimiApp: React.FC = () => {
     } catch (error) {
       if (requestId !== quoteRequestIdRef.current) return
       const message = error instanceof Error ? error.message : ''
-      const minimumDuration = /minimum duration is (\\d+) minutes/i.exec(message)
+      const minimumDuration = /minimum duration is (\d+) minutes/i.exec(message)
       setErrors([message.includes('Unauthorized')
         ? 'Для запроса цены войдите в аккаунт WIMI KIDS на этой платформе.'
         : minimumDuration
