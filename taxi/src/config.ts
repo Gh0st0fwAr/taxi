@@ -60,9 +60,9 @@ class Config {
     }
   }
 
-  setConfig(name?: string | null) {
+  setConfig(name?: string | null, persist = true) {
     const configName = normalizeConfigName(name)
-    localStorage.setItem('config', configName)
+    if (persist) localStorage.setItem('config', configName)
     _configName = configName
     applyConfigName(this.API_URL, configName)
   }
