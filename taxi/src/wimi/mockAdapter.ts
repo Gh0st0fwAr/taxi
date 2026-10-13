@@ -84,14 +84,14 @@ export function createDemoOrder(
 }
 
 function parseDate(value: string): Date | null {
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime()) || localDateString(date) !== value) return null
   return date
 }
 
 function parseTime(value: string): number | null {
-  const match = /^(\\d{2}):(\\d{2})$/.exec(value)
+  const match = /^(\d{2}):(\d{2})$/.exec(value)
   if (!match) return null
   const hours = Number(match[1])
   const minutes = Number(match[2])
