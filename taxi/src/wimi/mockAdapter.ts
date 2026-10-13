@@ -50,7 +50,7 @@ export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()):
   if (startMinutes === null || startMinutes < EARLIEST_START_MINUTES || startMinutes > LATEST_START_MINUTES) {
     errors.push('Начало заказа должно быть с 06:00 до 22:00 включительно.')
   } else if (startMinutes === LATEST_START_MINUTES) {
-    errors.push('Начало в 22:00 не позволяет выполнить минимальную длительность до полуночи.')
+    errors.push('Начало в 22:00 не позволяет завершить заказ до полуночи.')
   } else if (validDate && validDate.getTime() === new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
     && startMinutes <= now.getHours() * 60 + now.getMinutes()) {
     errors.push('Выберите время в будущем.')
