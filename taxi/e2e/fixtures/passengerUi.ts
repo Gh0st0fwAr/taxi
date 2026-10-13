@@ -416,11 +416,14 @@ export async function fillPassengerPhone(page: Page, phone: string): Promise<voi
   const input = page.getByTestId('passenger-order-phone')
   await expect(input, 'поле телефона видно в раскрытой форме').toBeVisible({ timeout: 30_000 })
 
-  // The component's controlled value is the national part only; the mask
-  // renders +233 itself. Fill only editable digits so profile digits cannot
-  // survive a failed keyboard clear and make the test depend on stale account data.
+  // InputMask does not reliably handle Playwright fill() on this fixed-prefix
+  // mask: it shifts digits into the prefix slots. Type into the editable slots
+  // as a user would, leaving the fixed +233 prefix untouched.
   const nationalDigits = digits.startsWith('233') ? digits.slice(3) : digits
-  await input.fill(nationalDigits)
+  await input.click()
+  await input.press('Control+A')
+  await input.press('Backspace')
+  await input.pressSequentially(nationalDigits, { delay: 40 })
 
   await expect
     .poll(async() => (await input.inputValue()).replace(/\D/g, ''), {
