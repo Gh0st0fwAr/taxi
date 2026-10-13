@@ -8,7 +8,7 @@ import WimiApp from './WimiApp'
 import './wimi.css'
 
 // WIMI KIDS belongs to the children tenant; do not inherit Taxi's default tenant.
-Config.setConfig('children')
+Config.setConfig('children', false)
 // Rehydrate the existing user session. The quote endpoint still requires a real user token.
 store.dispatch(userActionCreators.initUser())
 
