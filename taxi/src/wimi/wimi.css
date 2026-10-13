@@ -119,3 +119,49 @@
   .wimi-actions { flex-direction: column-reverse; }
   .wimi-actions .wimi-button { width: 100%; }
 }
+
+
+/* WIMI address picker reuses Taxi's existing suggestion and geocoding APIs. */
+.wimi-address-picker { position: relative; min-width: 0; }
+.wimi-address-input-row { display: flex; align-items: stretch; gap: 8px; }
+.wimi-address-input-row > input { flex: 1 1 auto; min-width: 0; width: 100%; min-height: 47px; padding: 11px 12px; border: 1px solid #d6dce7; border-radius: 10px; background: white; color: var(--wimi-ink); font-size: 15px; outline: none; }
+.wimi-address-input-row > input:focus { border-color: var(--wimi-primary); box-shadow: 0 0 0 3px rgba(56,86,216,.12); }
+.wimi-map-open-button { flex: 0 0 auto; min-height: 47px; padding: 9px 12px; white-space: nowrap; font-size: 12px; }
+.wimi-address-help { display: block; margin-top: 7px; color: var(--wimi-muted); font-size: 11px; line-height: 1.45; }
+.wimi-address-status, .wimi-address-selected, .wimi-address-error { margin: 8px 0 0; font-size: 12px; line-height: 1.45; }
+.wimi-address-status { color: var(--wimi-muted); }
+.wimi-address-selected { color: #147944; }
+.wimi-address-error { color: #84252c; }
+.wimi-address-suggestions { position: relative; z-index: 4; max-height: 220px; overflow: auto; margin: 7px 0 0; padding: 4px; list-style: none; border: 1px solid var(--wimi-line); border-radius: 10px; background: white; box-shadow: 0 8px 22px rgba(31,41,55,.12); }
+.wimi-address-suggestions li + li { border-top: 1px solid #eef0f5; }
+.wimi-address-suggestions button { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; width: 100%; padding: 10px; border: 0; border-radius: 7px; background: white; color: var(--wimi-ink); text-align: left; font-size: 13px; }
+.wimi-address-suggestions button:hover, .wimi-address-suggestions button:focus { background: var(--wimi-soft); outline: none; }
+.wimi-address-suggestions button span { overflow-wrap: anywhere; }
+.wimi-address-suggestions button small { flex: 0 0 auto; color: var(--wimi-muted); font-size: 10px; }
+.wimi-map-backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(15,23,42,.62); }
+.wimi-map-dialog { display: flex; flex-direction: column; width: min(100%, 900px); max-height: min(92vh, 820px); overflow: hidden; border: 1px solid var(--wimi-line); border-radius: 16px; background: white; box-shadow: 0 24px 70px rgba(0,0,0,.25); }
+.wimi-map-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--wimi-line); }
+.wimi-map-dialog-header h2 { margin: 0; font-size: 18px; }
+.wimi-map-dialog-header p { margin: 4px 0 0; color: var(--wimi-muted); font-size: 12px; }
+.wimi-map-dialog-header .wimi-button { min-height: 36px; padding: 7px 10px; font-size: 12px; }
+.wimi-map-canvas { position: relative; min-height: 260px; height: min(58vh, 560px); background: #eef2f7; }
+.wimi-leaflet-map { width: 100%; height: 100%; }
+.wimi-map-loading { display: grid; place-items: center; height: 100%; margin: 0; color: var(--wimi-muted); font-size: 13px; }
+.wimi-map-center-pin { position: absolute; z-index: 500; top: 50%; left: 50%; width: 26px; height: 38px; transform: translate(-50%, -100%); pointer-events: none; }
+.wimi-map-center-pin::before { content: ''; position: absolute; inset: 0 2px 6px; border: 2px solid white; border-radius: 50% 50% 50% 0; background: #3856d8; box-shadow: 0 2px 7px rgba(0,0,0,.35); transform: rotate(-45deg); }
+.wimi-map-center-pin span { position: absolute; top: 7px; left: 9px; z-index: 1; width: 8px; height: 8px; border-radius: 50%; background: white; }
+.wimi-map-dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-top: 1px solid var(--wimi-line); }
+.wimi-map-dialog-footer small { max-width: 60%; color: var(--wimi-muted); font-size: 11px; line-height: 1.45; }
+.wimi-map-dialog-footer .wimi-button { flex: 0 0 auto; }
+
+@media (max-width: 560px) {
+  .wimi-address-input-row { flex-direction: column; }
+  .wimi-map-open-button { width: 100%; }
+  .wimi-map-backdrop { padding: 0; }
+  .wimi-map-dialog { width: 100%; max-height: 100dvh; height: 100%; border-radius: 0; }
+  .wimi-map-dialog-header { padding: 13px 14px; }
+  .wimi-map-canvas { flex: 1 1 auto; min-height: 0; height: auto; }
+  .wimi-map-dialog-footer { align-items: stretch; flex-direction: column; padding: 12px 14px; }
+  .wimi-map-dialog-footer small { max-width: none; }
+  .wimi-map-dialog-footer .wimi-button { width: 100%; }
+}
