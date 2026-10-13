@@ -52,17 +52,17 @@ describe('WIMI demo booking rules', () => {
       expect(validateBookingDraft({ ...draft, startTime }, fixedNow).length).toBeGreaterThan(0)
     }
     expect(validateBookingDraft({ ...draft, startTime: '22:00' }, fixedNow)).toContain(
-      'Начало в 22:00 не позволяет выполнить минимальную длительность до полуночи.',
+      'Начало в 22:00 не позволяет завершить заказ до полуночи.',
     )
     expect(validateBookingDraft({ ...draft, startTime: '06:00' }, fixedNow)).toEqual([])
   })
 
-  test('enforces minimum duration and midnight boundary', () => {
-    expect(validateBookingDraft({ ...draft, durationMinutes: 119 }, fixedNow)).toContain('Минимальная длительность заказа — 120 минут.')
+  test('validates positive whole-minute duration and midnight boundary without duplicating server minimum policy', () => {
+    expect(validateBookingDraft({ ...draft, durationMinutes: 1 }, fixedNow)).toEqual([])
     expect(validateBookingDraft({ ...draft, startTime: '21:00', durationMinutes: 180 }, fixedNow)).toEqual([])
     expect(validateBookingDraft({ ...draft, startTime: '21:00', durationMinutes: 190 }, fixedNow)).toContain('Заказ должен завершиться не позднее 00:00.')
     for (const durationMinutes of [0, -120, 120.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(validateBookingDraft({ ...draft, durationMinutes }, fixedNow)).toContain('Минимальная длительность заказа — 120 минут.')
+      expect(validateBookingDraft({ ...draft, durationMinutes }, fixedNow)).toContain('Укажите длительность заказа в целых минутах.')
     }
   })
 

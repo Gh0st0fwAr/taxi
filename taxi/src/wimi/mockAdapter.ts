@@ -17,7 +17,6 @@ export type WimiDemoOrder = WimiBookingDraft & {
   estimatedTotalCents: number
 }
 
-export const MINIMUM_DURATION_MINUTES = 120
 const EARLIEST_START_MINUTES = 6 * 60
 const LATEST_START_MINUTES = 22 * 60
 
@@ -51,14 +50,14 @@ export function validateBookingDraft(draft: WimiBookingDraft, now = new Date()):
   if (startMinutes === null || startMinutes < EARLIEST_START_MINUTES || startMinutes > LATEST_START_MINUTES) {
     errors.push('Начало заказа должно быть с 06:00 до 22:00 включительно.')
   } else if (startMinutes === LATEST_START_MINUTES) {
-    errors.push('Начало в 22:00 не позволяет выполнить минимальную длительность до полуночи.')
+    errors.push('Начало в 22:00 не позволяет завершить заказ до полуночи.')
   } else if (validDate && validDate.getTime() === new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
     && startMinutes <= now.getHours() * 60 + now.getMinutes()) {
     errors.push('Выберите время в будущем.')
   }
 
-  if (!Number.isInteger(safeDraft.durationMinutes) || safeDraft.durationMinutes < MINIMUM_DURATION_MINUTES) {
-    errors.push('Минимальная длительность заказа — 120 минут.')
+  if (!Number.isInteger(safeDraft.durationMinutes) || safeDraft.durationMinutes < 1) {
+    errors.push('Укажите длительность заказа в целых минутах.')
   } else if (startMinutes !== null && safeDraft.durationMinutes > 1440 - startMinutes) {
     errors.push('Заказ должен завершиться не позднее 00:00.')
   }

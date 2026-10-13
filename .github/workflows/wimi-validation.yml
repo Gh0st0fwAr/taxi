@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - feat/wimi-server-pricing-quote
+      - feat/wimi-address-contract
 
 permissions:
   contents: read
