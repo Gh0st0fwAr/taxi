@@ -3,7 +3,7 @@ declare const test: (name: string, fn: () => void) => void
 declare const expect: (actual: unknown) => any
 
 import { buildNannyQuotePayload } from './nannyPricingPayload'
-import { parseNannyPricingEnvelope } from './nannyPricingApi'
+import { parseNannyPricingEnvelope } from './nannyPricingEnvelope'
 
 describe('nanny_pricing quote payload', () => {
   test('sends the service-local time with the Madrid summer offset', () => {
